@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NFIRS Incident Viewer</title>
+
+  <!-- ArcGIS Maps SDK for JavaScript -->
+  <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.29/"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      background: #f4f5f7;
+      color: #333F48;
+    }
+
+    #gate {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #FFFFFF;
+      z-index: 9999;
+      transition: opacity 0.4s ease;
+    }
+
+    #gate.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .gate-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      padding: 40px 48px;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    .gate-card h1 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .gate-card p {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    .level-toggle {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .level-btn {
+      flex: 1;
+      padding: 10px;
+      border: 1.5px solid #d0d0d0;
+      border-radius: 8px;
+      background: #fff;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      color: #333;
+    }
+
+    .level-btn.active {
+      border-color: #BF5700;
+      background: #fff5ef;
+      color: #BF5700;
+    }
+
+    .field-group {
+      margin-bottom: 16px;
+    }
+
+    .field-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #888;
+      margin-bottom: 6px;
+    }
+
+    .field-group select,
+    .field-group input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid #d0d0d0;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #333F48;
+      background: #fff;
+      appearance: none;
+      transition: border-color 0.15s;
+    }
+
+    .field-group select:focus,
+    .field-group input:focus {
+      outline: none;
+      border-color: #BF5700;
+    }
+
+    #dept-fields { display: none; }
+
+    #go-btn {
+      width: 100%;
+      padding: 13px;
+      background: #BF5700;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.15s;
+    }
+
+    #go-btn:hover { background: #a34a00; }
+    #go-btn:disabled { background: #d4a97a; cursor: not-allowed; }
+
+    .gate-note {
+      font-size: 12px;
+      color: #aaa;
+      text-align: center;
+      margin-top: 16px;
+      line-height: 1.5;
+    }
+
+
+    #app {
+      display: none;
+      height: 100vh;
+      flex-direction: column;
+    }
+
+    #app.visible { display: flex; }
+
+    #topbar {
+      height: 52px;
+      background: #333F48;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 16px;
+      flex-shrink: 0;
+    }
+
+    #topbar h2 { font-size: 15px; font-weight: 600; }
+
+    #jurisdiction-badge {
+      background: rgba(255,255,255,0.12);
+      border-radius: 20px;
+      padding: 3px 12px;
+      font-size: 12px;
+      color: #cde;
+    }
+
+    #change-btn {
+      margin-left: auto;
+      background: none;
+      border: 1px solid rgba(255,255,255,0.3);
+      color: #cde;
+      border-radius: 6px;
+      padding: 4px 12px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    #change-btn:hover { background: rgba(255,255,255,0.08); }
+
+    #main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    #viewDiv { flex: 1; }
+
+    #sidebar {
+      width: 300px;
+      background: #fff;
+      border-left: 1px solid #e0e0e0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #eee;
+      font-size: 13px;
+      font-weight: 600;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    #year-toggles {
+      padding: 12px 20px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .year-chip {
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid #d0d0d0;
+      font-size: 12px;
+      cursor: pointer;
+      background: #fff;
+      color: #555;
+      transition: all 0.15s;
+    }
+
+    .year-chip.active {
+      background: #BF5700;
+      border-color: #BF5700;
+      color: #fff;
+    }
+
+    #stats-panel {
+      padding: 16px 20px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 13px;
+    }
+
+    .stat-row .label { color: #666; }
+    .stat-row .value { font-weight: 600; color: #333F48; }
+
+    #loading-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: #555;
+      z-index: 100;
+    }
+
+    #loading-overlay.hidden { display: none; }
+  </style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="gate-card">
+    <h1>NFIRS Incident Viewer</h1>
+    <p>Select your state or department FDID to view incident data.</p>
+
+    <div class="level-toggle">
+      <button class="level-btn active" id="btn-state" onclick="setLevel('state')">State agency</button>
+      <button class="level-btn" id="btn-dept"  onclick="setLevel('dept')">Fire department</button>
+    </div>
+
+    <!-- State picker (always shown) -->
+    <div class="field-group">
+      <label>State</label>
+      <select id="state-select">
+        <option value="">— Select State —</option>
+      </select>
+    </div>
+
+    <!-- Department fields (level = dept only) -->
+    <div id="dept-fields">
+      <div class="field-group">
+        <label>Department name or FDID</label>
+        <input id="dept-input" type="text" placeholder="Search department…" autocomplete="off" />
+      </div>
+      <div class="field-group">
+        <select id="dept-select">
+          <option value="">— Select Department —</option>
+        </select>
+      </div>
+    </div>
+
+    <button id="go-btn" disabled onclick="launchApp()">View incidents</button>
+    <p class="gate-note">This data is from the National Fire Incident Reporting System (NFIRS) Public Data Release 2020-2024.</p>
+  </div>
+</div>
+
+
+<div id="app">
+  <div id="topbar">
+    <h2>NFIRS Incident Viewer</h2>
+    <span id="jurisdiction-badge"></span>
+    <button id="change-btn" onclick="resetToGate()">Change jurisdiction</button>
+  </div>
+  <div id="main">
+    <div id="viewDiv" style="position:relative;">
+      <div id="loading-overlay">Loading incident data…</div>
+    </div>
+    <div id="sidebar">
+      <div class="sidebar-header">Years</div>
+      <div id="year-toggles"></div>
+      <div class="sidebar-header">Summary</div>
+      <div id="stats-panel">
+        <div class="stat-row"><span class="label">Total incidents</span><span class="value" id="stat-total">—</span></div>
+        <div class="stat-row"><span class="label">Structure fires</span><span class="value" id="stat-structure">—</span></div>
+        <div class="stat-row"><span class="label">EMS calls</span><span class="value" id="stat-ems">—</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+
+const FEATURE_SERVICES = [
+  { year: 2020, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_Service_2020/FeatureServer" },
+  { year: 2021, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_2021/FeatureServer" },
+  { year: 2022, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_Service_2022/FeatureServer" },
+  { year: 2023, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_Service_2023/FeatureServer" },
+  { year: 2024, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_Service_2024/FeatureServer" },
+];
+
+// Fields
+const FIELD_STATE = "STATE";           
+const FIELD_FDID  = "FDID";            
+const FIELD_INC_TYPE = "INC_TYPE";     
+
+// Minimal outFields for initial map render (fetch detail on popup only)
+const MAP_OUT_FIELDS = ["OBJECTID", FIELD_STATE, FIELD_FDID, FIELD_INC_TYPE, "INC_DATE"];
+
+// ─────────────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────────────
+let currentLevel = "state";   // "state" | "dept"
+let map, view;
+let activeLayers = [];        // FeatureLayer references currently on map
+let activeYears = new Set([2020, 2021, 2022, 2023, 2024]);
+
+// ─────────────────────────────────────────────────────────
+// GATE UI
+// ─────────────────────────────────────────────────────────
+const STATES = [
+  ["AL","Alabama"],["AK","Alaska"],["AZ","Arizona"],["AR","Arkansas"],
+  ["CA","California"],["CO","Colorado"],["CT","Connecticut"],["DE","Delaware"],
+  ["FL","Florida"],["GA","Georgia"],["HI","Hawaii"],["ID","Idaho"],
+  ["IL","Illinois"],["IN","Indiana"],["IA","Iowa"],["KS","Kansas"],
+  ["KY","Kentucky"],["LA","Louisiana"],["ME","Maine"],["MD","Maryland"],
+  ["MA","Massachusetts"],["MI","Michigan"],["MN","Minnesota"],["MS","Mississippi"],
+  ["MO","Missouri"],["MT","Montana"],["NE","Nebraska"],["NV","Nevada"],
+  ["NH","New Hampshire"],["NJ","New Jersey"],["NM","New Mexico"],["NY","New York"],
+  ["NC","North Carolina"],["ND","North Dakota"],["OH","Ohio"],["OK","Oklahoma"],
+  ["OR","Oregon"],["PA","Pennsylvania"],["RI","Rhode Island"],["SC","South Carolina"],
+  ["SD","South Dakota"],["TN","Tennessee"],["TX","Texas"],["UT","Utah"],
+  ["VT","Vermont"],["VA","Virginia"],["WA","Washington"],["WV","West Virginia"],
+  ["WI","Wisconsin"],["WY","Wyoming"]
+];
+
+(function populateStateDropdown() {
+  const sel = document.getElementById("state-select");
+  STATES.forEach(([abbr, name]) => {
+    const opt = document.createElement("option");
+    opt.value = name;          // full name matches the STATE field in the feature service
+    opt.dataset.abbr = abbr;   // keep abbr available for URL params / dept lookup
+    opt.textContent = name;
+    sel.appendChild(opt);
+  });
+  sel.addEventListener("change", onStateChange);
+})();
+
+function setLevel(level) {
+  currentLevel = level;
+  document.getElementById("btn-state").classList.toggle("active", level === "state");
+  document.getElementById("btn-dept").classList.toggle("active", level === "dept");
+  document.getElementById("dept-fields").style.display = level === "dept" ? "block" : "none";
+  updateGoBtn();
+}
+
+function onStateChange() {
+  const state = document.getElementById("state-select").value;
+  if (currentLevel === "dept" && state) {
+    loadDepartments(state);
+  }
+  updateGoBtn();
+}
+
+// Dept lookup — replace this with a real lightweight lookup source
+// (e.g. a small JSON file or a low-record-count reference feature service)
+async function loadDepartments(stateCode) {
+  const sel = document.getElementById("dept-select");
+  sel.innerHTML = "<option value=''>Loading…</option>";
+
+  // EXAMPLE: fetch from a lightweight departments JSON you host separately
+  // const res = await fetch(`/data/departments/${stateCode}.json`);
+  // const depts = await res.json();
+
+  // Placeholder data — replace with real lookup
+  const depts = [
+    { fdid: "00001", name: "Sample Fire Department" },
+    { fdid: "00002", name: "Another Fire District" },
+  ];
+
+  sel.innerHTML = "<option value=''>— Select department —</option>";
+  depts.forEach(d => {
+    const opt = document.createElement("option");
+    opt.value = d.fdid;
+    opt.textContent = `${d.name} (${d.fdid})`;
+    sel.appendChild(opt);
+  });
+  sel.addEventListener("change", updateGoBtn);
+}
+
+function updateGoBtn() {
+  const state = document.getElementById("state-select").value;
+  const dept  = document.getElementById("dept-select").value;
+  const ready = state && (currentLevel === "state" || dept);
+  document.getElementById("go-btn").disabled = !ready;
+}
+
+// ─────────────────────────────────────────────────────────
+// BUILD definitionExpression FROM JURISDICTION
+// ─────────────────────────────────────────────────────────
+function buildDefinitionExpression(level, stateName, fdid) {
+  if (level === "state") {
+    return `${FIELD_STATE} = '${stateName}'`;
+  } else {
+    // Always include state — belt AND suspenders against cross-state FDID collisions
+    return `${FIELD_STATE} = '${stateName}' AND ${FIELD_FDID} = '${fdid}'`;
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// LAUNCH — called when user clicks "View incidents"
+// ─────────────────────────────────────────────────────────
+async function launchApp() {
+  const selectedOpt = document.getElementById("state-select").selectedOptions[0];
+  const stateName   = selectedOpt?.value || "";               // full name — used in definitionExpression
+  const stateAbbr   = selectedOpt?.dataset.abbr || "";        // abbreviation — used in URL params + dept lookup
+  const fdid        = document.getElementById("dept-select").value;
+
+  const defExp = buildDefinitionExpression(currentLevel, stateName, fdid);
+
+  // Update URL so the view is bookmarkable / shareable
+  const params = new URLSearchParams({ level: currentLevel, state: stateAbbr });
+  if (fdid) params.set("fdid", fdid);
+  history.replaceState({}, "", "?" + params.toString());
+
+  // Show app shell, hide gate
+  document.getElementById("gate").classList.add("hidden");
+  document.getElementById("app").classList.add("visible");
+
+  // Update topbar badge
+  const deptName = document.getElementById("dept-select").selectedOptions[0]?.text || "";
+  document.getElementById("jurisdiction-badge").textContent =
+    currentLevel === "state" ? stateName : `${deptName} · ${stateName}`;
+
+  // Build year toggle chips
+  buildYearToggles(defExp);
+
+  // Initialize map (only once)
+  if (!map) {
+    await initMap(defExp);
+  } else {
+    // If user changed jurisdiction, swap definitionExpression on existing layers
+    updateDefinitionExpression(defExp);
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// MAP INITIALIZATION
+// ─────────────────────────────────────────────────────────
+async function initMap(definitionExpression) {
+  const [Map, MapView, FeatureLayer, GroupLayer] =
+    await Promise.all([
+      loadModule("esri/Map"),
+      loadModule("esri/views/MapView"),
+      loadModule("esri/layers/FeatureLayer"),
+      loadModule("esri/layers/GroupLayer"),
+    ]);
+
+  // Build one FeatureLayer per year — ALL with definitionExpression applied
+  // before the layer is ever added to the map. No data loads until this point.
+  activeLayers = FEATURE_SERVICES.map(svc => {
+    return new FeatureLayer({
+      url: svc.url,
+      title: `NFIRS ${svc.year}`,
+      definitionExpression,          // ← server-side filter, applied before any query
+      outFields: MAP_OUT_FIELDS,     // ← only fetch fields needed for map render
+      visible: activeYears.has(svc.year),
+
+      // Clustering — critical for state-level users to avoid rendering 100K+ points
+      featureReduction: currentLevel === "state" ? {
+        type: "cluster",
+        clusterRadius: "60px",
+        popupTemplate: {
+          title: "Cluster",
+          content: "{cluster_count} incidents"
+        },
+        labelingInfo: [{
+          labelExpression: "$feature.cluster_count",
+          labelPlacement: "center-center",
+          symbol: { type: "text", color: "#fff", font: { size: 11, weight: "bold" } }
+        }]
+      } : null,   // department users get individual points — record count is small
+
+      renderer: {
+        type: "simple",
+        symbol: {
+          type: "simple-marker",
+          size: 6,
+          color: [220, 60, 40, 0.7],
+          outline: { color: [255,255,255,0.5], width: 0.5 }
+        }
+      }
+    });
+  });
+
+  // Wrap in a group layer so year visibility can be toggled cleanly
+  const group = new GroupLayer({ layers: activeLayers, title: "NFIRS Incidents" });
+
+  map = new Map({ basemap: "gray-vector", layers: [group] });
+
+  view = new MapView({
+    container: "viewDiv",
+    map,
+    zoom: currentLevel === "state" ? 6 : 12,
+    center: [-98.5, 39.5]   // default center; you can zoom to jurisdiction extent instead
+  });
+
+  view.when(() => {
+    document.getElementById("loading-overlay").classList.add("hidden");
+    zoomToJurisdiction();
+    loadSummaryStats(definitionExpression);
+  });
+}
+
+// ─────────────────────────────────────────────────────────
+// ZOOM TO JURISDICTION EXTENT
+// ─────────────────────────────────────────────────────────
+async function zoomToJurisdiction() {
+  if (!activeLayers.length) return;
+  // Query the extent of the first visible layer and zoom to it
+  const layer = activeLayers.find(l => l.visible);
+  if (!layer) return;
+
+  const result = await layer.queryExtent({ where: layer.definitionExpression });
+  if (result?.extent) {
+    view.goTo(result.extent.expand(1.2));
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// UPDATE definitionExpression (jurisdiction change)
+// ─────────────────────────────────────────────────────────
+function updateDefinitionExpression(definitionExpression) {
+  document.getElementById("loading-overlay").classList.remove("hidden");
+  activeLayers.forEach(layer => {
+    layer.definitionExpression = definitionExpression;
+    // Update clustering based on new level
+    layer.featureReduction = currentLevel === "state"
+      ? { type: "cluster", clusterRadius: "60px" }
+      : null;
+  });
+  view.when(() => {
+    document.getElementById("loading-overlay").classList.add("hidden");
+    zoomToJurisdiction();
+    loadSummaryStats(definitionExpression);
+  });
+}
+
+// ─────────────────────────────────────────────────────────
+// YEAR TOGGLES
+// ─────────────────────────────────────────────────────────
+function buildYearToggles(defExp) {
+  const container = document.getElementById("year-toggles");
+  container.innerHTML = "";
+  FEATURE_SERVICES.forEach(svc => {
+    const chip = document.createElement("button");
+    chip.className = "year-chip active";
+    chip.textContent = svc.year;
+    chip.dataset.year = svc.year;
+    chip.onclick = () => toggleYear(svc.year, chip, defExp);
+    container.appendChild(chip);
+  });
+}
+
+function toggleYear(year, chip, defExp) {
+  if (activeYears.has(year)) {
+    activeYears.delete(year);
+    chip.classList.remove("active");
+  } else {
+    activeYears.add(year);
+    chip.classList.add("active");
+  }
+  const layer = activeLayers.find(l => l.title === `NFIRS ${year}`);
+  if (layer) layer.visible = activeYears.has(year);
+  loadSummaryStats(defExp);
+}
+
+// ─────────────────────────────────────────────────────────
+// SUMMARY STATS (queried server-side — no full record pull)
+// ─────────────────────────────────────────────────────────
+async function loadSummaryStats(definitionExpression) {
+  document.getElementById("stat-total").textContent = "…";
+  document.getElementById("stat-structure").textContent = "…";
+  document.getElementById("stat-ems").textContent = "…";
+
+  let total = 0, structure = 0, ems = 0;
+
+  // Run stats queries in parallel across visible year layers
+  const visibleLayers = activeLayers.filter(l => l.visible);
+
+  await Promise.all(visibleLayers.map(async layer => {
+    const [countResult, structResult, emsResult] = await Promise.all([
+      layer.queryFeatureCount({ where: definitionExpression }),
+      layer.queryFeatureCount({ where: `${definitionExpression} AND ${FIELD_INC_TYPE} LIKE '1%'` }),  // structure fire codes
+      layer.queryFeatureCount({ where: `${definitionExpression} AND ${FIELD_INC_TYPE} LIKE '3%'` }),  // EMS codes
+    ]);
+    total     += countResult;
+    structure += structResult;
+    ems       += emsResult;
+  }));
+
+  document.getElementById("stat-total").textContent     = total.toLocaleString();
+  document.getElementById("stat-structure").textContent = structure.toLocaleString();
+  document.getElementById("stat-ems").textContent       = ems.toLocaleString();
+}
+
+// ─────────────────────────────────────────────────────────
+// RESET — return to gate without reloading the page
+// ─────────────────────────────────────────────────────────
+function resetToGate() {
+  document.getElementById("gate").classList.remove("hidden");
+  document.getElementById("app").classList.remove("visible");
+  history.replaceState({}, "", window.location.pathname);
+}
+
+// ─────────────────────────────────────────────────────────
+// RESTORE FROM URL (bookmarked / shared link)
+// ─────────────────────────────────────────────────────────
+(function restoreFromUrl() {
+  const p = new URLSearchParams(window.location.search);
+  if (!p.get("state")) return;
+
+  document.getElementById("state-select").value = p.get("state");
+  if (p.get("level") === "dept") {
+    setLevel("dept");
+    // Dept select population is async — trigger the state change flow
+    onStateChange().then(() => {
+      if (p.get("fdid")) {
+        document.getElementById("dept-select").value = p.get("fdid");
+      }
+      updateGoBtn();
+      if (document.getElementById("go-btn").disabled === false) launchApp();
+    });
+  } else {
+    setLevel("state");
+    updateGoBtn();
+    launchApp();
+  }
+})();
+
+// ─────────────────────────────────────────────────────────
+// ARCGIS MODULE LOADER HELPER
+// ─────────────────────────────────────────────────────────
+function loadModule(moduleName) {
+  return new Promise((resolve, reject) => {
+    require([moduleName], resolve, reject);
+  });
+}
+</script>
+
+</body>
+</html>
