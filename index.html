@@ -379,7 +379,7 @@ const STATES = [
   const sel = document.getElementById("state-select");
   STATES.forEach(([abbr, name]) => {
     const opt = document.createElement("option");
-    opt.value = name;          // full name matches the STATE field in the feature service
+    opt.value = abbr;          // full name matches the STATE field in the feature service
     opt.dataset.abbr = abbr;   // keep abbr available for URL params / dept lookup
     opt.textContent = name;
     sel.appendChild(opt);
@@ -436,9 +436,6 @@ function updateGoBtn() {
   document.getElementById("go-btn").disabled = !ready;
 }
 
-// ─────────────────────────────────────────────────────────
-// BUILD definitionExpression FROM JURISDICTION
-// ─────────────────────────────────────────────────────────
 function buildDefinitionExpression(level, stateName, fdid) {
   if (level === "state") {
     return `${FIELD_STATE} = '${stateName}'`;
@@ -448,16 +445,13 @@ function buildDefinitionExpression(level, stateName, fdid) {
   }
 }
 
-// ─────────────────────────────────────────────────────────
-// LAUNCH — called when user clicks "View incidents"
-// ─────────────────────────────────────────────────────────
 async function launchApp() {
   const selectedOpt = document.getElementById("state-select").selectedOptions[0];
-  const stateName   = selectedOpt?.value || "";               // full name — used in definitionExpression
-  const stateAbbr   = selectedOpt?.dataset.abbr || "";        // abbreviation — used in URL params + dept lookup
+  const stateAbbr   = selectedOpt?.value || "";               // 2-letter code — used in definitionExpression + URL
+  const stateName   = selectedOpt?.textContent || stateAbbr;  // full name — used for display only
   const fdid        = document.getElementById("dept-select").value;
 
-  const defExp = buildDefinitionExpression(currentLevel, stateName, fdid);
+  const defExp = buildDefinitionExpression(currentLevel, stateAbbr, fdid);
 
   // Update URL so the view is bookmarkable / shareable
   const params = new URLSearchParams({ level: currentLevel, state: stateAbbr });
