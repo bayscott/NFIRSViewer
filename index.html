@@ -216,6 +216,7 @@
       line-height: 1.5;
     }
 
+    /* ── App shell ──────────────────────────────────── */
     #app { display: none; height: 100vh; flex-direction: column; }
     #app.visible { display: flex; }
 
@@ -249,8 +250,7 @@
       flex-shrink: 0;
     }
 
-    #topbar-year-toggles,
-    #topbar-type-toggles {
+    #topbar-year-toggles {
       display: flex;
       gap: 4px;
       align-items: center;
@@ -273,6 +273,87 @@
       background: #BF5700;
       border-color: #BF5700;
       color: #fff;
+    }
+
+    /* Incident type dropdown in topbar */
+    #type-filter-wrapper {
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    #type-filter-btn {
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.25);
+      font-size: 11px;
+      cursor: pointer;
+      background: transparent;
+      color: rgba(255,255,255,0.8);
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    #type-filter-btn:hover { background: rgba(255,255,255,0.08); }
+    #type-filter-btn.has-filter { border-color: #BF5700; color: #fff; }
+
+    #type-filter-btn::after {
+      content: "▾";
+      font-size: 10px;
+    }
+
+    #type-dropdown {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      z-index: 1000;
+      min-width: 240px;
+      padding: 8px 0;
+    }
+
+    #type-dropdown.open { display: block; }
+
+    .type-dropdown-header {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 12px 8px;
+      border-bottom: 1px solid #f0f0f0;
+      margin-bottom: 4px;
+    }
+
+    .type-dropdown-header button {
+      background: none;
+      border: none;
+      font-size: 11px;
+      color: #BF5700;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    .type-dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      color: #333F48;
+      transition: background 0.1s;
+    }
+
+    .type-dropdown-item:hover { background: #f7f7f7; }
+
+    .type-dropdown-item input[type="checkbox"] {
+      accent-color: #BF5700;
+      width: 14px;
+      height: 14px;
+      cursor: pointer;
     }
 
     #change-btn {
@@ -339,6 +420,41 @@
 
     .stat-row .label { color: #666; }
     .stat-row .value { font-weight: 600; color: #333F48; }
+
+    /* Export button */
+    #export-section {
+      padding: 16px 20px;
+      border-top: 1px solid #eee;
+      flex-shrink: 0;
+    }
+
+    #export-btn {
+      width: 100%;
+      padding: 10px;
+      background: #333F48;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    #export-btn:hover { background: #4a5568; }
+    #export-btn:disabled { background: #aaa; cursor: not-allowed; }
+
+    #export-status {
+      font-size: 11px;
+      color: #888;
+      text-align: center;
+      margin-top: 6px;
+      min-height: 16px;
+    }
 
     #loading-overlay {
       position: absolute;
@@ -431,7 +547,17 @@
     <div class="topbar-divider"></div>
     <div id="topbar-year-toggles"></div>
     <div class="topbar-divider"></div>
-    <div id="topbar-type-toggles"></div>
+    <!-- Incident type dropdown -->
+    <div id="type-filter-wrapper">
+      <button id="type-filter-btn" onclick="toggleTypeDropdown()">Incident Types</button>
+      <div id="type-dropdown">
+        <div class="type-dropdown-header">
+          <button onclick="selectAllTypes(); syncTypeDropdown(); event.stopPropagation()">All</button>
+          <button onclick="clearAllTypes(); syncTypeDropdown(); event.stopPropagation()">None</button>
+        </div>
+        <div id="type-dropdown-items"></div>
+      </div>
+    </div>
     <button id="change-btn" onclick="resetToGate()">Change jurisdiction</button>
   </div>
   <div id="main">
@@ -455,15 +581,17 @@
         <div class="stat-row"><span class="label">Aid received</span><span class="value" id="stat-aid-recv">—</span></div>
         <div class="stat-row"><span class="label">Aid given</span><span class="value" id="stat-aid-given">—</span></div>
       </div>
+      <div id="export-section">
+        <button id="export-btn" onclick="exportCSV()">&#8595; Export to CSV</button>
+        <div id="export-status"></div>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
 
-// ─────────────────────────────────────────────────────────
-// CONFIG
-// ─────────────────────────────────────────────────────────
+
 const FEATURE_SERVICES = [
   { year: 2020, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_Service_2020/FeatureServer/0" },
   { year: 2021, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_2021/FeatureServer/0" },
@@ -489,14 +617,28 @@ const FIELD_FDID     = "FDID";
 const FIELD_INC_TYPE = "INC_TYPE";
 const MAP_OUT_FIELDS = ["OBJECTID", FIELD_STATE, FIELD_FDID, FIELD_INC_TYPE, "INC_DATE"];
 
-// ─────────────────────────────────────────────────────────
-// APP STATE
-// ─────────────────────────────────────────────────────────
+const EXPORT_FIELDS = [
+  "INCIDENT_KEY", "STATE", "FDID", "FD_NAME", "INC_DATE", "INC_NO", "EXP_NO",
+  "NUM_MILE", "STREET_PRE", "STREETNAME", "STREETTYPE", "STREETSUF", "APT_NO",
+  "CITY", "STATE_ID", "ZIP5", "INC_TYPE", "AID", "ALARM", "ARRIVAL", "LU_CLEAR",
+  "SHIFT", "ACT_TAK1", "ACT_TAK2", "ACT_TAK3", "SUP_APP", "EMS_APP", "OTH_APP",
+  "SUP_PER", "EMS_PER", "OTH_PER", "PROP_LOSS", "CONT_LOSS", "PROP_VAL", "CONT_VAL",
+  "FF_DEATH", "OTH_DEATH", "FF_INJ", "OTH_INJ", "HAZ_REL", "MIXED_USE", "PROP_USE",
+  "NUM_UNIT", "BLDG_INVOL", "ACRES_BURN", "AREA_ORIG", "HEAT_SOURC", "FIRST_IGN",
+  "CAUSE_IGN", "FACT_IGN_1", "FACT_IGN_2", "EQUIP_INV", "CAUSE_CODE", "MOB_TYPE",
+  "STRUC_TYPE", "STRUC_STAT", "BLDG_ABOVE", "TOT_SQ_FT", "FIRE_ORIG", "FIRE_SPRD",
+  "DETECTOR", "DET_TYPE", "DET_OPERAT", "DET_EFFECT", "DET_FAIL", "AES_PRES",
+  "AES_TYPE", "AES_OPER", "NO_SPR_OP", "AES_FAIL", "FIRE_CAUSE", "HEAT_SOURCE_WF",
+  "EQ_INV_IGN", "MOB_PROP", "ACRES_BURN_WF", "Status", "Score", "Match_Addr", "Addr_type"
+];
+
 let currentLevel = "state";
 let map, view;
 let activeLayers = [];
 let activeYears  = new Set([2024]);
 let activeTypes  = new Set(INC_TYPES.map(t => t.code));
+let currentStateAbbr = "";
+let currentFdid = "";
 
 const STATES = [
   ["AL","Alabama"],["AK","Alaska"],["AZ","Arizona"],["AR","Arkansas"],
@@ -514,15 +656,11 @@ const STATES = [
   ["WI","Wisconsin"],["WY","Wyoming"]
 ];
 
-// ─────────────────────────────────────────────────────────
-// GATE CONTROLS
-// ─────────────────────────────────────────────────────────
 (function buildGateControls() {
   const sel = document.getElementById("state-select");
   STATES.forEach(([abbr, name]) => {
     const opt = document.createElement("option");
     opt.value = abbr;
-    opt.dataset.abbr = abbr;
     opt.textContent = name;
     sel.appendChild(opt);
   });
@@ -531,26 +669,16 @@ const STATES = [
   const yearGrid = document.getElementById("gate-year-checks");
   FEATURE_SERVICES.forEach(svc => {
     yearGrid.appendChild(makeCheckItem(
-      `year-${svc.year}`,
-      String(svc.year),
-      activeYears.has(svc.year),
-      () => {
-        activeYears.has(svc.year) ? activeYears.delete(svc.year) : activeYears.add(svc.year);
-        updateGoBtn();
-      }
+      `year-${svc.year}`, String(svc.year), activeYears.has(svc.year),
+      () => { activeYears.has(svc.year) ? activeYears.delete(svc.year) : activeYears.add(svc.year); updateGoBtn(); }
     ));
   });
 
   const typeGrid = document.getElementById("gate-type-checks");
   INC_TYPES.forEach(t => {
     typeGrid.appendChild(makeCheckItem(
-      `type-${t.code}`,
-      t.label,
-      activeTypes.has(t.code),
-      () => {
-        activeTypes.has(t.code) ? activeTypes.delete(t.code) : activeTypes.add(t.code);
-        updateGoBtn();
-      }
+      `gate-type-${t.code}`, t.label, activeTypes.has(t.code),
+      () => { activeTypes.has(t.code) ? activeTypes.delete(t.code) : activeTypes.add(t.code); updateGoBtn(); }
     ));
   });
 })();
@@ -603,19 +731,22 @@ function clearAllYears() {
 function selectAllTypes() {
   INC_TYPES.forEach(t => {
     activeTypes.add(t.code);
-    const input = document.getElementById(`type-${t.code}`);
-    if (input) { input.checked = true; input.closest(".check-item").classList.add("checked"); }
+    // sync gate checkboxes
+    const gInput = document.getElementById(`gate-type-${t.code}`);
+    if (gInput) { gInput.checked = true; gInput.closest(".check-item").classList.add("checked"); }
   });
   updateGoBtn();
+  syncTypeDropdown();
 }
 
 function clearAllTypes() {
   activeTypes.clear();
   INC_TYPES.forEach(t => {
-    const input = document.getElementById(`type-${t.code}`);
-    if (input) { input.checked = false; input.closest(".check-item").classList.remove("checked"); }
+    const gInput = document.getElementById(`gate-type-${t.code}`);
+    if (gInput) { gInput.checked = false; gInput.closest(".check-item").classList.remove("checked"); }
   });
   updateGoBtn();
+  syncTypeDropdown();
 }
 
 function setLevel(level) {
@@ -659,9 +790,66 @@ function updateGoBtn() {
   document.getElementById("go-btn").disabled = !ready;
 }
 
-// ─────────────────────────────────────────────────────────
-// FILTER BUILDERS
-// ─────────────────────────────────────────────────────────
+function buildTypeDropdown() {
+  const container = document.getElementById("type-dropdown-items");
+  container.innerHTML = "";
+  INC_TYPES.forEach(t => {
+    const item = document.createElement("label");
+    item.className = "type-dropdown-item";
+
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.id = `topbar-type-${t.code}`;
+    input.checked = activeTypes.has(t.code);
+    input.addEventListener("change", () => {
+      activeTypes.has(t.code) ? activeTypes.delete(t.code) : activeTypes.add(t.code);
+      updateTypeFilterBtn();
+      applyFilters(currentStateAbbr, currentFdid);
+    });
+
+    const span = document.createElement("span");
+    span.textContent = `${t.code} – ${t.label}`;
+
+    item.appendChild(input);
+    item.appendChild(span);
+    container.appendChild(item);
+  });
+  updateTypeFilterBtn();
+}
+
+function syncTypeDropdown() {
+  INC_TYPES.forEach(t => {
+    const input = document.getElementById(`topbar-type-${t.code}`);
+    if (input) input.checked = activeTypes.has(t.code);
+  });
+  updateTypeFilterBtn();
+}
+
+function updateTypeFilterBtn() {
+  const btn = document.getElementById("type-filter-btn");
+  if (activeTypes.size === INC_TYPES.length) {
+    btn.textContent = "Incident Types";
+    btn.classList.remove("has-filter");
+  } else {
+    btn.textContent = `Types (${activeTypes.size}/${INC_TYPES.length})`;
+    btn.classList.add("has-filter");
+  }
+  btn.insertAdjacentHTML("beforeend", ' <span style="font-size:10px">▾</span>');
+}
+
+function toggleTypeDropdown() {
+  const dd = document.getElementById("type-dropdown");
+  dd.classList.toggle("open");
+}
+
+// Close dropdown when clicking outside
+document.addEventListener("click", e => {
+  const wrapper = document.getElementById("type-filter-wrapper");
+  if (wrapper && !wrapper.contains(e.target)) {
+    document.getElementById("type-dropdown")?.classList.remove("open");
+  }
+});
+
 function buildTypeClause() {
   if (activeTypes.size === INC_TYPES.length) return null;
   const clauses = [...activeTypes].map(code => `${FIELD_INC_TYPE} LIKE '${code}%'`);
@@ -676,46 +864,39 @@ function buildDefinitionExpression(stateAbbr, fdid) {
   return parts.join(" AND ");
 }
 
-// ─────────────────────────────────────────────────────────
-// LAUNCH
-// ─────────────────────────────────────────────────────────
 async function launchApp() {
   const selectedOpt = document.getElementById("state-select").selectedOptions[0];
-  const stateAbbr   = selectedOpt?.value || "";
-  const stateName   = selectedOpt?.textContent || stateAbbr;
-  const fdid        = document.getElementById("dept-select").value;
-  const defExp      = buildDefinitionExpression(stateAbbr, fdid);
+  currentStateAbbr  = selectedOpt?.value || "";
+  const stateName   = selectedOpt?.textContent || currentStateAbbr;
+  currentFdid       = document.getElementById("dept-select").value;
+  const defExp      = buildDefinitionExpression(currentStateAbbr, currentFdid);
 
-  const params = new URLSearchParams({ level: currentLevel, state: stateAbbr });
-  if (fdid) params.set("fdid", fdid);
+  const params = new URLSearchParams({ level: currentLevel, state: currentStateAbbr });
+  if (currentFdid) params.set("fdid", currentFdid);
   history.replaceState({}, "", "?" + params.toString());
 
-  // Show app shell FIRST so viewDiv has real dimensions before map init
   document.getElementById("gate").classList.add("hidden");
   document.getElementById("app").classList.add("visible");
 
-  // Force browser to fully paint before SDK measures the container
   await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
   const deptName = document.getElementById("dept-select").selectedOptions[0]?.text || "";
   document.getElementById("jurisdiction-badge").textContent =
     currentLevel === "state" ? stateName : `${deptName} · ${stateName}`;
 
-  buildTopbarControls(stateAbbr, fdid);
+  buildTopbarYearChips();
+  buildTypeDropdown();
 
   if (!map) {
     await initMap(defExp);
   } else {
-    applyFilters(stateAbbr, fdid);
+    applyFilters(currentStateAbbr, currentFdid);
   }
 }
 
-// ─────────────────────────────────────────────────────────
-// TOPBAR CONTROLS
-// ─────────────────────────────────────────────────────────
-function buildTopbarControls(stateAbbr, fdid) {
-  const yearContainer = document.getElementById("topbar-year-toggles");
-  yearContainer.innerHTML = "";
+function buildTopbarYearChips() {
+  const container = document.getElementById("topbar-year-toggles");
+  container.innerHTML = "";
   FEATURE_SERVICES.forEach(svc => {
     const chip = document.createElement("button");
     chip.className = "topbar-chip" + (activeYears.has(svc.year) ? " active" : "");
@@ -723,30 +904,12 @@ function buildTopbarControls(stateAbbr, fdid) {
     chip.onclick = () => {
       activeYears.has(svc.year) ? activeYears.delete(svc.year) : activeYears.add(svc.year);
       chip.classList.toggle("active", activeYears.has(svc.year));
-      applyFilters(stateAbbr, fdid);
+      applyFilters(currentStateAbbr, currentFdid);
     };
-    yearContainer.appendChild(chip);
-  });
-
-  const typeContainer = document.getElementById("topbar-type-toggles");
-  typeContainer.innerHTML = "";
-  INC_TYPES.forEach(t => {
-    const chip = document.createElement("button");
-    chip.className = "topbar-chip" + (activeTypes.has(t.code) ? " active" : "");
-    chip.textContent = t.code;
-    chip.title = t.label;
-    chip.onclick = () => {
-      activeTypes.has(t.code) ? activeTypes.delete(t.code) : activeTypes.add(t.code);
-      chip.classList.toggle("active", activeTypes.has(t.code));
-      applyFilters(stateAbbr, fdid);
-    };
-    typeContainer.appendChild(chip);
+    container.appendChild(chip);
   });
 }
 
-// ─────────────────────────────────────────────────────────
-// APPLY FILTERS
-// ─────────────────────────────────────────────────────────
 function applyFilters(stateAbbr, fdid) {
   const defExp = buildDefinitionExpression(stateAbbr, fdid);
   document.getElementById("loading-overlay").classList.remove("hidden");
@@ -764,15 +927,10 @@ function applyFilters(stateAbbr, fdid) {
   if (activeOnMap.length) {
     view.whenLayerView(activeOnMap[activeOnMap.length - 1]).then(lv => {
       const handle = lv.watch("updating", updating => {
-        if (!updating) {
-          handle.remove();
-          document.getElementById("loading-overlay").classList.add("hidden");
-        }
+        if (!updating) { handle.remove(); document.getElementById("loading-overlay").classList.add("hidden"); }
       });
       if (!lv.updating) document.getElementById("loading-overlay").classList.add("hidden");
-    }).catch(() => {
-      document.getElementById("loading-overlay").classList.add("hidden");
-    });
+    }).catch(() => { document.getElementById("loading-overlay").classList.add("hidden"); });
   } else {
     document.getElementById("loading-overlay").classList.add("hidden");
   }
@@ -780,9 +938,6 @@ function applyFilters(stateAbbr, fdid) {
   loadSummaryStats(defExp);
 }
 
-// ─────────────────────────────────────────────────────────
-// MAP INITIALIZATION
-// ─────────────────────────────────────────────────────────
 async function initMap(definitionExpression) {
   const [Map, MapView, FeatureLayer] = await Promise.all([
     loadModule("esri/Map"),
@@ -825,14 +980,11 @@ async function initMap(definitionExpression) {
     }
   }));
 
-  // Add only active year layers, staggered to avoid suspension
   const initialLayers = activeLayers.filter(l =>
     activeYears.has(parseInt(l.title.replace("NFIRS ", "")))
   );
-
   initialLayers.forEach(l => map.layers.add(l));
 
-  // Give SDK time to render before proceeding
   await new Promise(r => setTimeout(r, 1500));
 
   document.getElementById("loading-overlay").classList.add("hidden");
@@ -840,9 +992,7 @@ async function initMap(definitionExpression) {
   loadSummaryStats(definitionExpression);
 }
 
-// ─────────────────────────────────────────────────────────
-// ZOOM TO JURISDICTION
-// ─────────────────────────────────────────────────────────
+
 async function zoomToJurisdiction() {
   const layer = activeLayers.find(l => map.layers.includes(l));
   if (!layer) return;
@@ -852,9 +1002,6 @@ async function zoomToJurisdiction() {
   } catch (e) { /* silent */ }
 }
 
-// ─────────────────────────────────────────────────────────
-// SUMMARY STATS
-// ─────────────────────────────────────────────────────────
 async function loadSummaryStats(definitionExpression) {
   ["stat-total","stat-fires","stat-ems","stat-ff-death","stat-oth-death","stat-aid-recv","stat-aid-given"]
     .forEach(id => document.getElementById(id).textContent = "…");
@@ -875,14 +1022,8 @@ async function loadSummaryStats(definitionExpression) {
       layer.queryFeatureCount({ where: definitionExpression }),
       layer.queryFeatureCount({ where: `${definitionExpression} AND ${FIELD_INC_TYPE} LIKE '1%'` }),
       layer.queryFeatureCount({ where: `${definitionExpression} AND ${FIELD_INC_TYPE} IN (${emsCodes})` }),
-      layer.queryFeatures({
-        where: definitionExpression,
-        outStatistics: [{ statisticType: "sum", onStatisticField: "FF_DEATH", outStatisticFieldName: "total" }]
-      }),
-      layer.queryFeatures({
-        where: definitionExpression,
-        outStatistics: [{ statisticType: "sum", onStatisticField: "OTH_DEATH", outStatisticFieldName: "total" }]
-      }),
+      layer.queryFeatures({ where: definitionExpression, outStatistics: [{ statisticType: "sum", onStatisticField: "FF_DEATH", outStatisticFieldName: "total" }] }),
+      layer.queryFeatures({ where: definitionExpression, outStatistics: [{ statisticType: "sum", onStatisticField: "OTH_DEATH", outStatisticFieldName: "total" }] }),
       layer.queryFeatureCount({ where: `${definitionExpression} AND AID IN ('1', '2')` }),
       layer.queryFeatureCount({ where: `${definitionExpression} AND AID IN ('3', '4')` }),
     ]);
@@ -905,18 +1046,123 @@ async function loadSummaryStats(definitionExpression) {
   document.getElementById("stat-aid-given").textContent = aidGiven.toLocaleString();
 }
 
-// ─────────────────────────────────────────────────────────
-// RESET
-// ─────────────────────────────────────────────────────────
+// CSV EXPORT
+
+async function exportCSV() {
+  const btn    = document.getElementById("export-btn");
+  const status = document.getElementById("export-status");
+  const defExp = buildDefinitionExpression(currentStateAbbr, currentFdid);
+
+  const visibleLayers = activeLayers.filter(l => map.layers.includes(l));
+  if (!visibleLayers.length) {
+    status.textContent = "No active layers to export.";
+    return;
+  }
+
+  // Check total record count first
+  let totalCount = 0;
+  for (const layer of visibleLayers) {
+    totalCount += await layer.queryFeatureCount({ where: defExp });
+  }
+
+  if (totalCount > 100000) {
+    const ok = confirm(
+      `This export contains ${totalCount.toLocaleString()} records across the selected years and filters.\n\n` +
+      `Large exports may take several minutes. Consider narrowing your year or incident type filters first.\n\n` +
+      `Continue?`
+    );
+    if (!ok) return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Exporting…";
+  status.textContent = "Fetching records…";
+
+  try {
+    const allRows = [];
+    let fetched = 0;
+
+    for (const layer of visibleLayers) {
+      const layerYear = layer.title.replace("NFIRS ", "");
+      let offset = 0;
+      const pageSize = 2000;
+
+      while (true) {
+        status.textContent = `Fetching ${layer.title}… (${(fetched).toLocaleString()} records)`;
+
+        const result = await layer.queryFeatures({
+          where: defExp,
+          outFields: EXPORT_FIELDS,
+          returnGeometry: false,
+          resultOffset: offset,
+          resultRecordCount: pageSize,
+          orderByFields: ["OBJECTID ASC"]
+        });
+
+        if (!result.features.length) break;
+
+        result.features.forEach(f => {
+          const row = { YEAR: layerYear };
+          EXPORT_FIELDS.forEach(field => {
+            row[field] = f.attributes[field] ?? "";
+          });
+          allRows.push(row);
+        });
+
+        fetched += result.features.length;
+        offset  += pageSize;
+
+        if (result.features.length < pageSize) break;
+      }
+    }
+
+    if (!allRows.length) {
+      status.textContent = "No records found for current filters.";
+      btn.disabled = false;
+      btn.textContent = "↓ Export to CSV";
+      return;
+    }
+
+    // Build CSV
+    const headers = ["YEAR", ...EXPORT_FIELDS];
+    const csvLines = [
+      headers.join(","),
+      ...allRows.map(row =>
+        headers.map(h => {
+          const val = row[h] ?? "";
+          return String(val).includes(",") ? `"${val}"` : val;
+        }).join(",")
+      )
+    ];
+
+    const blob = new Blob([csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = `NFIRS_${currentStateAbbr}${currentFdid ? "_" + currentFdid : ""}_export.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    status.textContent = `✓ Exported ${allRows.length.toLocaleString()} records.`;
+
+  } catch (err) {
+    console.error("Export error:", err);
+    status.textContent = "Export failed. Check console for details.";
+  }
+
+  btn.disabled = false;
+  btn.textContent = "↓ Export to CSV";
+}
+
 function resetToGate() {
   document.getElementById("gate").classList.remove("hidden");
   document.getElementById("app").classList.remove("visible");
+  document.getElementById("type-dropdown").classList.remove("open");
   history.replaceState({}, "", window.location.pathname);
 }
 
-// ─────────────────────────────────────────────────────────
-// RESTORE FROM URL
-// ─────────────────────────────────────────────────────────
 (function restoreFromUrl() {
   const p = new URLSearchParams(window.location.search);
   if (!p.get("state")) return;
@@ -935,9 +1181,6 @@ function resetToGate() {
   }
 })();
 
-// ─────────────────────────────────────────────────────────
-// MODULE LOADER
-// ─────────────────────────────────────────────────────────
 function loadModule(moduleName) {
   return new Promise((resolve, reject) => require([moduleName], resolve, reject));
 }
