@@ -854,7 +854,6 @@ async function initMap(definitionExpression) {
   document.getElementById("loading-overlay").classList.add("hidden");
   zoomToJurisdiction();
   loadSummaryStats(definitionExpression);
-}
 } 
 async function zoomToJurisdiction() {
   const layer = activeLayers.find(l => l.visible);
