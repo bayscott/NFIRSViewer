@@ -812,7 +812,6 @@ async function initMap(definitionExpression) {
   // Wait for view to be fully ready BEFORE adding any layers
   await view.when();
 
- // Build all layers
 activeLayers = FEATURE_SERVICES.map(svc => new FeatureLayer({
   url: svc.url,
   title: `NFIRS ${svc.year}`,
@@ -834,6 +833,20 @@ activeLayers = FEATURE_SERVICES.map(svc => new FeatureLayer({
     }
   }
 }));
+
+// Add only active year layers
+const initialLayers = activeLayers.filter(l =>
+  activeYears.has(parseInt(l.title.replace("NFIRS ", "")))
+);
+
+initialLayers.forEach(l => map.layers.add(l));
+
+// Give the SDK a moment to render, then just proceed
+await new Promise(r => setTimeout(r, 1500));
+
+document.getElementById("loading-overlay").classList.add("hidden");
+zoomToJurisdiction();
+loadSummaryStats(definitionExpression);
 
 // Add only active year layers, waiting for each to fully initialize before the next
 const initialLayers = activeLayers.filter(l =>
