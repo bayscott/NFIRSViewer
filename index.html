@@ -811,11 +811,19 @@ async function initMap(definitionExpression) {
   });
 
   view.when(async () => {
-    // Wait for the first visible layer to actually load
     const visibleLayer = activeLayers.find(l => l.visible);
     if (visibleLayer) {
       const lv = await view.whenLayerView(visibleLayer);
-      await lv.when();
+      // Wait until the layer view is done updating, not just initialized
+      await new Promise(resolve => {
+        if (!lv.updating) return resolve();
+        const handle = lv.watch("updating", updating => {
+          if (!updating) {
+            handle.remove();
+            resolve();
+          }
+        });
+      });
     }
     document.getElementById("loading-overlay").classList.add("hidden");
     zoomToJurisdiction();
