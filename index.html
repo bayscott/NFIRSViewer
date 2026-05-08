@@ -753,23 +753,41 @@ function applyFilters(stateAbbr, fdid) {
   document.getElementById("loading-overlay").classList.remove("hidden");
 
   activeLayers.forEach(layer => {
-    // Year — only show layers for active years
     const layerYear = parseInt(layer.title.replace("NFIRS ", ""));
-    layer.visible = activeYears.has(layerYear);
-    // Type + jurisdiction — server-side
+    const shouldBeActive = activeYears.has(layerYear);
+    const isOnMap = map.layers.includes(layer);
+
+    // Add or remove from map based on active years
+    if (shouldBeActive && !isOnMap) {
+      map.layers.add(layer);
+    } else if (!shouldBeActive && isOnMap) {
+      map.layers.remove(layer);
+    }
+
+    // Always update the definition expression
     layer.definitionExpression = defExp;
   });
 
-  // Hide loading once the view settles
-  view.whenLayerView(activeLayers.find(l => l.visible) || activeLayers[0]).then(() => {
+  const activeOnMap = activeLayers.filter(l => map.layers.includes(l));
+  if (activeOnMap.length) {
+    view.whenLayerView(activeOnMap[activeOnMap.length - 1]).then(lv => {
+      const handle = lv.watch("updating", updating => {
+        if (!updating) {
+          handle.remove();
+          document.getElementById("loading-overlay").classList.add("hidden");
+        }
+      });
+      if (!lv.updating) document.getElementById("loading-overlay").classList.add("hidden");
+    }).catch(() => {
+      document.getElementById("loading-overlay").classList.add("hidden");
+    });
+  } else {
     document.getElementById("loading-overlay").classList.add("hidden");
-  }).catch(() => {
-    document.getElementById("loading-overlay").classList.add("hidden");
-  });
+  }
 
   loadSummaryStats(defExp);
 }
-
+ 
 async function initMap(definitionExpression) {
   const [Map, MapView, FeatureLayer] = await Promise.all([
     loadModule("esri/Map"),
@@ -777,12 +795,13 @@ async function initMap(definitionExpression) {
     loadModule("esri/layers/FeatureLayer"),
   ]);
 
+  // Build all layer configs but only add visible ones to the map initially
   activeLayers = FEATURE_SERVICES.map(svc => new FeatureLayer({
     url: svc.url,
     title: `NFIRS ${svc.year}`,
-    definitionExpression,          // jurisdiction + type filter, server-side
+    definitionExpression,
     outFields: MAP_OUT_FIELDS,
-    visible: activeYears.has(svc.year),  // year filter via visibility
+    visible: true,  // always true — we control presence in map.layers instead
 
     featureReduction: currentLevel === "state" ? {
       type: "cluster",
@@ -796,12 +815,17 @@ async function initMap(definitionExpression) {
         type: "simple-marker",
         size: 6,
         color: [191, 87, 0, 200],
-        outline: { color: [255,255,255,128], width: 0.5 }
+        outline: { color: [255, 255, 255, 128], width: 0.5 }
       }
     }
   }));
 
-  map = new Map({ basemap: "gray-vector", layers: activeLayers });
+  // Only add active year layers to the map — not all 5
+  const initialLayers = activeLayers.filter(l =>
+    activeYears.has(parseInt(l.title.replace("NFIRS ", "")))
+  );
+
+  map = new Map({ basemap: "gray-vector", layers: initialLayers });
 
   view = new MapView({
     container: "viewDiv",
@@ -811,17 +835,13 @@ async function initMap(definitionExpression) {
   });
 
   view.when(async () => {
-    const visibleLayer = activeLayers.find(l => l.visible);
+    const visibleLayer = initialLayers[initialLayers.length - 1] || initialLayers[0];
     if (visibleLayer) {
       const lv = await view.whenLayerView(visibleLayer);
-      // Wait until the layer view is done updating, not just initialized
       await new Promise(resolve => {
         if (!lv.updating) return resolve();
         const handle = lv.watch("updating", updating => {
-          if (!updating) {
-            handle.remove();
-            resolve();
-          }
+          if (!updating) { handle.remove(); resolve(); }
         });
       });
     }
@@ -829,7 +849,7 @@ async function initMap(definitionExpression) {
     zoomToJurisdiction();
     loadSummaryStats(definitionExpression);
   });
-}
+} 
 async function zoomToJurisdiction() {
   const layer = activeLayers.find(l => l.visible);
   if (!layer) return;
