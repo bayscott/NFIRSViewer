@@ -808,7 +808,7 @@ async function initMap(definitionExpression) {
   // Wait for view to be fully ready BEFORE adding any layers
   await view.when();
 
-  // Build all layers
+ // Build all layers
 activeLayers = FEATURE_SERVICES.map(svc => new FeatureLayer({
   url: svc.url,
   title: `NFIRS ${svc.year}`,
@@ -831,16 +831,25 @@ activeLayers = FEATURE_SERVICES.map(svc => new FeatureLayer({
   }
 }));
 
-// Add only active year layers
+// Add only active year layers, waiting for each to fully initialize before the next
 const initialLayers = activeLayers.filter(l =>
   activeYears.has(parseInt(l.title.replace("NFIRS ", "")))
 );
 
-// Add, then immediately remove, then re-add after a tick
-// Forces the SDK to create a fresh unsuspended layer view
 for (const l of initialLayers) {
   map.layers.add(l);
-  await new Promise(r => setTimeout(r, 50));
+  // Wait for this layer view to exist and become unsuspended before adding next
+  await new Promise(resolve => {
+    view.whenLayerView(l).then(lv => {
+      if (!lv.suspended) return resolve();
+      const handle = lv.watch("suspended", suspended => {
+        if (!suspended) {
+          handle.remove();
+          resolve();
+        }
+      });
+    });
+  });
 }
 
 document.getElementById("loading-overlay").classList.add("hidden");
