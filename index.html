@@ -795,13 +795,26 @@ async function initMap(definitionExpression) {
     loadModule("esri/layers/FeatureLayer"),
   ]);
 
-  // Build all layer configs but only add visible ones to the map initially
+  // Create map and view FIRST with no layers
+  map = new Map({ basemap: "gray-vector" });
+
+  view = new MapView({
+    container: "viewDiv",
+    map,
+    zoom: currentLevel === "state" ? 6 : 12,
+    center: [-98.5, 39.5]
+  });
+
+  // Wait for view to be fully ready BEFORE adding any layers
+  await view.when();
+
+  // NOW build and add only the active year layers
   activeLayers = FEATURE_SERVICES.map(svc => new FeatureLayer({
     url: svc.url,
     title: `NFIRS ${svc.year}`,
     definitionExpression,
     outFields: MAP_OUT_FIELDS,
-    visible: true,  // always true — we control presence in map.layers instead
+    visible: true,
 
     featureReduction: currentLevel === "state" ? {
       type: "cluster",
@@ -820,35 +833,28 @@ async function initMap(definitionExpression) {
     }
   }));
 
-  // Only add active year layers to the map — not all 5
+  // Add only active year layers after view is ready
   const initialLayers = activeLayers.filter(l =>
     activeYears.has(parseInt(l.title.replace("NFIRS ", "")))
   );
+  initialLayers.forEach(l => map.layers.add(l));
 
-  map = new Map({ basemap: "gray-vector", layers: initialLayers });
-
-  view = new MapView({
-    container: "viewDiv",
-    map,
-    zoom: currentLevel === "state" ? 6 : 12,
-    center: [-98.5, 39.5]
-  });
-
-  view.when(async () => {
-    const visibleLayer = initialLayers[initialLayers.length - 1] || initialLayers[0];
-    if (visibleLayer) {
-      const lv = await view.whenLayerView(visibleLayer);
-      await new Promise(resolve => {
-        if (!lv.updating) return resolve();
-        const handle = lv.watch("updating", updating => {
-          if (!updating) { handle.remove(); resolve(); }
-        });
+  // Wait for the added layer to finish rendering
+  const layerToWatch = initialLayers[initialLayers.length - 1];
+  if (layerToWatch) {
+    const lv = await view.whenLayerView(layerToWatch);
+    await new Promise(resolve => {
+      if (!lv.updating) return resolve();
+      const handle = lv.watch("updating", updating => {
+        if (!updating) { handle.remove(); resolve(); }
       });
-    }
-    document.getElementById("loading-overlay").classList.add("hidden");
-    zoomToJurisdiction();
-    loadSummaryStats(definitionExpression);
-  });
+    });
+  }
+
+  document.getElementById("loading-overlay").classList.add("hidden");
+  zoomToJurisdiction();
+  loadSummaryStats(definitionExpression);
+}
 } 
 async function zoomToJurisdiction() {
   const layer = activeLayers.find(l => l.visible);
