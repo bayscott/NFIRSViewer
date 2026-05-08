@@ -699,8 +699,12 @@ async function launchApp() {
   if (fdid) params.set("fdid", fdid);
   history.replaceState({}, "", "?" + params.toString());
 
+  // Show app shell FIRST so viewDiv has real dimensions before map init
   document.getElementById("gate").classList.add("hidden");
   document.getElementById("app").classList.add("visible");
+
+  // Force browser to reflow/repaint before initializing map
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
   const deptName = document.getElementById("dept-select").selectedOptions[0]?.text || "";
   document.getElementById("jurisdiction-badge").textContent =
