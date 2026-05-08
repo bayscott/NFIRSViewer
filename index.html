@@ -796,8 +796,8 @@ async function initMap(definitionExpression) {
       symbol: {
         type: "simple-marker",
         size: 6,
-        color: [191, 87, 0, 0.75],
-        outline: { color: [255,255,255,0.5], width: 0.5 }
+        color: [191, 87, 0, 200],
+        outline: { color: [255,255,255,128], width: 0.5 }
       }
     }
   }));
@@ -812,7 +812,13 @@ async function initMap(definitionExpression) {
     center: [-98.5, 39.5]
   });
 
-  view.when(() => {
+  view.when(async () => {
+    // Wait for the first visible layer to actually load
+    const visibleLayer = activeLayers.find(l => l.visible);
+    if (visibleLayer) {
+      const lv = await view.whenLayerView(visibleLayer);
+      await lv.when();
+    }
     document.getElementById("loading-overlay").classList.add("hidden");
     zoomToJurisdiction();
     loadSummaryStats(definitionExpression);
