@@ -807,6 +807,8 @@ async function initMap(definitionExpression) {
     definitionExpression,
     outFields: MAP_OUT_FIELDS,
     visible: true,
+    minScale: 0,
+    maxScale: 0,
     featureReduction: currentLevel === "state" ? {
       type: "cluster",
       clusterRadius: "60px",
