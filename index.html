@@ -509,12 +509,6 @@ async function initMap(definitionExpression) {
           title: "Cluster",
           content: "{cluster_count} incidents"
         },
-        labelingInfo: [{
-          labelExpression: "$feature.cluster_count",
-          labelPlacement: "center-center",
-          symbol: { type: "text", color: "#fff", font: { size: 11, weight: "bold" } }
-        }]
-      } : null,   // department users get individual points — record count is small
 
       renderer: {
         type: "simple",
