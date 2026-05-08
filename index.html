@@ -17,6 +17,7 @@
       color: #333F48;
     }
 
+    /* ── Gate ───────────────────────────────────────── */
     #gate {
       position: fixed;
       inset: 0;
@@ -83,12 +84,6 @@
       margin-bottom: 6px;
     }
 
-    .field-note {
-      font-size: 11px;
-      color: #aaa;
-      margin-top: 4px;
-    }
-
     .field-group select,
     .field-group input {
       width: 100%;
@@ -109,7 +104,6 @@
     }
 
     #dept-fields { display: none; }
-    #state-fdid-fields { display: block; }
 
     .gate-section-label {
       font-size: 12px;
@@ -227,6 +221,7 @@
     #app { display: none; height: 100vh; flex-direction: column; }
     #app.visible { display: flex; }
 
+    /* overflow: visible is critical — allows type dropdown to escape the bar */
     #topbar {
       height: 52px;
       background: #333F48;
@@ -236,7 +231,9 @@
       padding: 0 20px;
       gap: 12px;
       flex-shrink: 0;
-      overflow: hidden;
+      overflow: visible;
+      position: relative;
+      z-index: 500;
     }
 
     #topbar h2 { font-size: 15px; font-weight: 600; white-space: nowrap; }
@@ -282,6 +279,7 @@
       color: #fff;
     }
 
+    /* Type filter dropdown — positioned relative to wrapper, z-index above map */
     #type-filter-wrapper {
       position: relative;
       flex-shrink: 0;
@@ -296,9 +294,6 @@
       background: transparent;
       color: rgba(255,255,255,0.8);
       white-space: nowrap;
-      display: flex;
-      align-items: center;
-      gap: 5px;
     }
 
     #type-filter-btn:hover { background: rgba(255,255,255,0.08); }
@@ -307,14 +302,14 @@
     #type-dropdown {
       display: none;
       position: absolute;
-      top: calc(100% + 6px);
+      top: calc(100% + 8px);
       left: 0;
       background: #fff;
       border: 1px solid #e0e0e0;
       border-radius: 8px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-      z-index: 1000;
-      min-width: 240px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+      z-index: 9000;
+      min-width: 260px;
       padding: 8px 0;
     }
 
@@ -341,7 +336,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 6px 12px;
+      padding: 7px 12px;
       cursor: pointer;
       font-size: 13px;
       color: #333F48;
@@ -355,6 +350,7 @@
       width: 14px;
       height: 14px;
       cursor: pointer;
+      flex-shrink: 0;
     }
 
     #change-btn {
@@ -422,6 +418,58 @@
     .stat-row .label { color: #666; }
     .stat-row .value { font-weight: 600; color: #333F48; }
 
+    /* FDID filter section in sidebar */
+    #fdid-filter-section {
+      border-top: 1px solid #eee;
+      flex-shrink: 0;
+    }
+
+    #fdid-filter-section .sidebar-header {
+      border-bottom: 1px solid #eee;
+    }
+
+    #fdid-filter-inner {
+      padding: 12px 20px;
+    }
+
+    #fdid-filter-inner input {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1.5px solid #d0d0d0;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #333F48;
+      transition: border-color 0.15s;
+    }
+
+    #fdid-filter-inner input:focus {
+      outline: none;
+      border-color: #BF5700;
+    }
+
+    #fdid-filter-inner p {
+      font-size: 11px;
+      color: #aaa;
+      margin-top: 4px;
+    }
+
+    #fdid-apply-btn {
+      margin-top: 8px;
+      width: 100%;
+      padding: 8px;
+      background: #BF5700;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    #fdid-apply-btn:hover { background: #a34a00; }
+
+    /* Export section */
     #export-section {
       padding: 16px 20px;
       border-top: 1px solid #eee;
@@ -439,10 +487,6 @@
       font-weight: 600;
       cursor: pointer;
       transition: background 0.15s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
     }
 
     #export-btn:hover { background: #4a5568; }
@@ -504,14 +548,6 @@
       </select>
     </div>
 
-    <!-- Optional FDID filter for state users -->
-    <div class="field-group" id="state-fdid-fields">
-      <label>Filter by Department (optional)</label>
-      <input id="state-fdid-input" type="text" placeholder="Enter FDID to narrow to a single department" autocomplete="off" />
-      <p class="field-note">Leave blank to view all departments in the state.</p>
-    </div>
-
-    <!-- Department fields (level = dept only) -->
     <div id="dept-fields">
       <div class="field-group">
         <label>Department name or FDID</label>
@@ -556,17 +592,18 @@
     <div id="topbar-year-toggles"></div>
     <div class="topbar-divider"></div>
     <div id="type-filter-wrapper">
-      <button id="type-filter-btn" onclick="toggleTypeDropdown()">Incident Types</button>
+      <button id="type-filter-btn" onclick="toggleTypeDropdown()">Incident Types ▾</button>
       <div id="type-dropdown">
         <div class="type-dropdown-header">
-          <button onclick="selectAllTypes(); syncTypeDropdown(); event.stopPropagation()">All</button>
-          <button onclick="clearAllTypes(); syncTypeDropdown(); event.stopPropagation()">None</button>
+          <button onclick="selectAllTypes(); syncTypeDropdown(); applyFilters(currentStateAbbr, currentFdid); event.stopPropagation()">All</button>
+          <button onclick="clearAllTypes(); syncTypeDropdown(); applyFilters(currentStateAbbr, currentFdid); event.stopPropagation()">None</button>
         </div>
         <div id="type-dropdown-items"></div>
       </div>
     </div>
     <button id="change-btn" onclick="resetToGate()">Change jurisdiction</button>
   </div>
+
   <div id="main">
     <div id="viewDiv">
       <div id="loading-overlay">
@@ -574,6 +611,7 @@
         Loading incident data…
       </div>
     </div>
+
     <div id="sidebar">
       <div class="sidebar-header">Summary</div>
       <div id="stats-panel">
@@ -588,6 +626,17 @@
         <div class="stat-row"><span class="label">Aid received</span><span class="value" id="stat-aid-recv">—</span></div>
         <div class="stat-row"><span class="label">Aid given</span><span class="value" id="stat-aid-given">—</span></div>
       </div>
+
+      <!-- FDID filter — state users only, shown after load -->
+      <div id="fdid-filter-section" style="display:none;">
+        <div class="sidebar-header">Filter by Department</div>
+        <div id="fdid-filter-inner">
+          <input id="state-fdid-input" type="text" placeholder="Enter FDID…" autocomplete="off" />
+          <p>Leave blank to view all departments</p>
+          <button id="fdid-apply-btn" onclick="applyFilters(currentStateAbbr, currentFdid)">Apply</button>
+        </div>
+      </div>
+
       <div id="export-section">
         <button id="export-btn" onclick="exportCSV()">&#8595; Export to CSV</button>
         <div id="export-status"></div>
@@ -638,13 +687,13 @@ const EXPORT_FIELDS = [
   "EQ_INV_IGN", "MOB_PROP", "ACRES_BURN_WF", "Status", "Score", "Match_Addr", "Addr_type"
 ];
 
-let currentLevel    = "state";
+let currentLevel     = "state";
 let map, view;
-let activeLayers    = [];
-let activeYears     = new Set([2024]);
-let activeTypes     = new Set(INC_TYPES.map(t => t.code));
+let activeLayers     = [];
+let activeYears      = new Set([2024]);
+let activeTypes      = new Set(INC_TYPES.map(t => t.code));
 let currentStateAbbr = "";
-let currentFdid     = "";
+let currentFdid      = "";
 
 const STATES = [
   ["AL","Alabama"],["AK","Alaska"],["AZ","Arizona"],["AR","Arkansas"],
@@ -661,7 +710,6 @@ const STATES = [
   ["VT","Vermont"],["VA","Virginia"],["WA","Washington"],["WV","West Virginia"],
   ["WI","Wisconsin"],["WY","Wyoming"]
 ];
-
 
 (function buildGateControls() {
   const sel = document.getElementById("state-select");
@@ -759,8 +807,7 @@ function setLevel(level) {
   currentLevel = level;
   document.getElementById("btn-state").classList.toggle("active", level === "state");
   document.getElementById("btn-dept").classList.toggle("active", level === "dept");
-  document.getElementById("dept-fields").style.display        = level === "dept"  ? "block" : "none";
-  document.getElementById("state-fdid-fields").style.display  = level === "state" ? "block" : "none";
+  document.getElementById("dept-fields").style.display = level === "dept" ? "block" : "none";
   updateGoBtn();
 }
 
@@ -866,10 +913,9 @@ function buildDefinitionExpression(stateAbbr, fdid) {
   const parts = [`${FIELD_STATE} = '${stateAbbr}'`];
 
   if (currentLevel === "dept") {
-    // Department mode — filter by selected FDID
     parts.push(`${FIELD_FDID} = '${fdid}'`);
   } else {
-    // State mode — check optional FDID filter input
+    // State mode — check optional sidebar FDID filter
     const stateFdid = document.getElementById("state-fdid-input")?.value.trim();
     if (stateFdid) parts.push(`${FIELD_FDID} = '${stateFdid}'`);
   }
@@ -895,13 +941,13 @@ async function launchApp() {
 
   await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-  // Build jurisdiction badge — include FDID if state user entered one
-  const stateFdid = document.getElementById("state-fdid-input")?.value.trim();
-  const deptName  = document.getElementById("dept-select").selectedOptions[0]?.text || "";
-  let badge = stateName;
-  if (currentLevel === "dept") badge = `${deptName} · ${stateName}`;
-  else if (stateFdid) badge = `${stateName} · FDID ${stateFdid}`;
-  document.getElementById("jurisdiction-badge").textContent = badge;
+  const deptName = document.getElementById("dept-select").selectedOptions[0]?.text || "";
+  document.getElementById("jurisdiction-badge").textContent =
+    currentLevel === "state" ? stateName : `${deptName} · ${stateName}`;
+
+  // Show FDID filter in sidebar only for state users
+  document.getElementById("fdid-filter-section").style.display =
+    currentLevel === "state" ? "block" : "none";
 
   buildTopbarYearChips();
   buildTypeDropdown();
@@ -1082,8 +1128,8 @@ async function exportCSV() {
 
   if (totalCount > 100000) {
     const ok = confirm(
-      `This export contains ${totalCount.toLocaleString()} records across the selected years and filters.\n\n` +
-      `Large exports may take several minutes. Consider narrowing your year or incident type filters first.\n\nContinue?`
+      `This export contains ${totalCount.toLocaleString()} records.\n\n` +
+      `Large exports may take several minutes. Consider narrowing your filters first.\n\nContinue?`
     );
     if (!ok) return;
   }
@@ -1140,13 +1186,13 @@ async function exportCSV() {
       ...allRows.map(row =>
         headers.map(h => {
           const val = String(row[h] ?? "");
-          return val.includes(",") || val.includes('"') ? `"${val.replace(/"/g, '""')}"` : val;
+          return (val.includes(",") || val.includes('"')) ? `"${val.replace(/"/g, '""')}"` : val;
         }).join(",")
       )
     ];
 
     const stateFdid = document.getElementById("state-fdid-input")?.value.trim();
-    const suffix = currentFdid ? `_${currentFdid}` : (stateFdid ? `_${stateFdid}` : "");
+    const suffix    = currentFdid ? `_${currentFdid}` : (stateFdid ? `_${stateFdid}` : "");
     const blob = new Blob([csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
@@ -1167,6 +1213,7 @@ async function exportCSV() {
   btn.disabled = false;
   btn.textContent = "↓ Export to CSV";
 }
+
 
 function resetToGate() {
   document.getElementById("gate").classList.remove("hidden");
