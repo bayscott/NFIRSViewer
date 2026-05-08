@@ -17,7 +17,6 @@
       color: #333F48;
     }
 
-    /* ── Gate ───────────────────────────────────────── */
     #gate {
       position: fixed;
       inset: 0;
@@ -105,7 +104,6 @@
 
     #dept-fields { display: none; }
 
-    /* Gate year checkboxes */
     .gate-section-label {
       font-size: 12px;
       font-weight: 600;
@@ -147,7 +145,7 @@
       border-color: #BF5700;
       background: #f7f7f7;
       color: #333F48;
-}
+    }
 
     .check-item .check-box {
       width: 14px;
@@ -218,7 +216,6 @@
       line-height: 1.5;
     }
 
-    /* ── App shell ──────────────────────────────────── */
     #app { display: none; height: 100vh; flex-direction: column; }
     #app.visible { display: flex; }
 
@@ -403,7 +400,6 @@
       </div>
     </div>
 
-    <!-- Year filter -->
     <div class="field-group">
       <span class="gate-section-label">Years</span>
       <div class="select-all-row">
@@ -413,7 +409,6 @@
       <div class="check-grid years-grid" id="gate-year-checks"></div>
     </div>
 
-    <!-- Incident type filter -->
     <div class="field-group">
       <span class="gate-section-label">Incident types</span>
       <div class="select-all-row">
@@ -465,7 +460,10 @@
 </div>
 
 <script>
-  
+
+// ─────────────────────────────────────────────────────────
+// CONFIG
+// ─────────────────────────────────────────────────────────
 const FEATURE_SERVICES = [
   { year: 2020, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_Service_2020/FeatureServer/0" },
   { year: 2021, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_2021/FeatureServer/0" },
@@ -491,11 +489,14 @@ const FIELD_FDID     = "FDID";
 const FIELD_INC_TYPE = "INC_TYPE";
 const MAP_OUT_FIELDS = ["OBJECTID", FIELD_STATE, FIELD_FDID, FIELD_INC_TYPE, "INC_DATE"];
 
+// ─────────────────────────────────────────────────────────
+// APP STATE
+// ─────────────────────────────────────────────────────────
 let currentLevel = "state";
 let map, view;
-let activeLayers  = [];   // FeatureLayer objects currently on the map
-let activeYears   = new Set([2024]);
-let activeTypes   = new Set(INC_TYPES.map(t => t.code));  // all on by default
+let activeLayers = [];
+let activeYears  = new Set([2024]);
+let activeTypes  = new Set(INC_TYPES.map(t => t.code));
 
 const STATES = [
   ["AL","Alabama"],["AK","Alaska"],["AZ","Arizona"],["AR","Arkansas"],
@@ -513,8 +514,10 @@ const STATES = [
   ["WI","Wisconsin"],["WY","Wyoming"]
 ];
 
+// ─────────────────────────────────────────────────────────
+// GATE CONTROLS
+// ─────────────────────────────────────────────────────────
 (function buildGateControls() {
-  // State dropdown
   const sel = document.getElementById("state-select");
   STATES.forEach(([abbr, name]) => {
     const opt = document.createElement("option");
@@ -525,7 +528,6 @@ const STATES = [
   });
   sel.addEventListener("change", onStateChange);
 
-  // Year checkboxes
   const yearGrid = document.getElementById("gate-year-checks");
   FEATURE_SERVICES.forEach(svc => {
     yearGrid.appendChild(makeCheckItem(
@@ -539,7 +541,6 @@ const STATES = [
     ));
   });
 
-  // Incident type checkboxes
   const typeGrid = document.getElementById("gate-type-checks");
   INC_TYPES.forEach(t => {
     typeGrid.appendChild(makeCheckItem(
@@ -573,10 +574,6 @@ function makeCheckItem(id, labelText, checked, onChange) {
   input.addEventListener("change", () => {
     item.classList.toggle("checked", input.checked);
     onChange();
-  });
-
-  item.addEventListener("click", () => {
-    // label click toggles input natively, just sync state
   });
 
   item.appendChild(input);
@@ -638,7 +635,6 @@ function onStateChange() {
 async function loadDepartments(stateCode) {
   const sel = document.getElementById("dept-select");
   sel.innerHTML = "<option value=''>Loading…</option>";
-  // Replace with real lookup source
   const depts = [
     { fdid: "00001", name: "Sample Fire Department" },
     { fdid: "00002", name: "Another Fire District" },
@@ -663,37 +659,32 @@ function updateGoBtn() {
   document.getElementById("go-btn").disabled = !ready;
 }
 
+// ─────────────────────────────────────────────────────────
+// FILTER BUILDERS
+// ─────────────────────────────────────────────────────────
 function buildTypeClause() {
-  if (activeTypes.size === INC_TYPES.length) return null; // all types — no filter needed
+  if (activeTypes.size === INC_TYPES.length) return null;
   const clauses = [...activeTypes].map(code => `${FIELD_INC_TYPE} LIKE '${code}%'`);
   return `(${clauses.join(" OR ")})`;
 }
 
 function buildDefinitionExpression(stateAbbr, fdid) {
-  const parts = [];
-
-  // Jurisdiction
-  if (currentLevel === "state") {
-    parts.push(`${FIELD_STATE} = '${stateAbbr}'`);
-  } else {
-    parts.push(`${FIELD_STATE} = '${stateAbbr}'`);
-    parts.push(`${FIELD_FDID} = '${fdid}'`);
-  }
-
-  // Incident type — server-side, built into the WHERE clause
+  const parts = [`${FIELD_STATE} = '${stateAbbr}'`];
+  if (currentLevel === "dept") parts.push(`${FIELD_FDID} = '${fdid}'`);
   const typeClause = buildTypeClause();
   if (typeClause) parts.push(typeClause);
-
   return parts.join(" AND ");
 }
 
+// ─────────────────────────────────────────────────────────
+// LAUNCH
+// ─────────────────────────────────────────────────────────
 async function launchApp() {
   const selectedOpt = document.getElementById("state-select").selectedOptions[0];
   const stateAbbr   = selectedOpt?.value || "";
   const stateName   = selectedOpt?.textContent || stateAbbr;
   const fdid        = document.getElementById("dept-select").value;
-
-  const defExp = buildDefinitionExpression(stateAbbr, fdid);
+  const defExp      = buildDefinitionExpression(stateAbbr, fdid);
 
   const params = new URLSearchParams({ level: currentLevel, state: stateAbbr });
   if (fdid) params.set("fdid", fdid);
@@ -703,7 +694,7 @@ async function launchApp() {
   document.getElementById("gate").classList.add("hidden");
   document.getElementById("app").classList.add("visible");
 
-  // Force browser to reflow/repaint before initializing map
+  // Force browser to fully paint before SDK measures the container
   await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
   const deptName = document.getElementById("dept-select").selectedOptions[0]?.text || "";
@@ -719,8 +710,10 @@ async function launchApp() {
   }
 }
 
+// ─────────────────────────────────────────────────────────
+// TOPBAR CONTROLS
+// ─────────────────────────────────────────────────────────
 function buildTopbarControls(stateAbbr, fdid) {
-  // Year chips
   const yearContainer = document.getElementById("topbar-year-toggles");
   yearContainer.innerHTML = "";
   FEATURE_SERVICES.forEach(svc => {
@@ -735,13 +728,12 @@ function buildTopbarControls(stateAbbr, fdid) {
     yearContainer.appendChild(chip);
   });
 
-  // Incident type chips — short labels for topbar
   const typeContainer = document.getElementById("topbar-type-toggles");
   typeContainer.innerHTML = "";
   INC_TYPES.forEach(t => {
     const chip = document.createElement("button");
     chip.className = "topbar-chip" + (activeTypes.has(t.code) ? " active" : "");
-    chip.textContent = t.code;  // just the number — hover title has full name
+    chip.textContent = t.code;
     chip.title = t.label;
     chip.onclick = () => {
       activeTypes.has(t.code) ? activeTypes.delete(t.code) : activeTypes.add(t.code);
@@ -752,6 +744,9 @@ function buildTopbarControls(stateAbbr, fdid) {
   });
 }
 
+// ─────────────────────────────────────────────────────────
+// APPLY FILTERS
+// ─────────────────────────────────────────────────────────
 function applyFilters(stateAbbr, fdid) {
   const defExp = buildDefinitionExpression(stateAbbr, fdid);
   document.getElementById("loading-overlay").classList.remove("hidden");
@@ -760,15 +755,8 @@ function applyFilters(stateAbbr, fdid) {
     const layerYear = parseInt(layer.title.replace("NFIRS ", ""));
     const shouldBeActive = activeYears.has(layerYear);
     const isOnMap = map.layers.includes(layer);
-
-    // Add or remove from map based on active years
-    if (shouldBeActive && !isOnMap) {
-      map.layers.add(layer);
-    } else if (!shouldBeActive && isOnMap) {
-      map.layers.remove(layer);
-    }
-
-    // Always update the definition expression
+    if (shouldBeActive && !isOnMap) map.layers.add(layer);
+    else if (!shouldBeActive && isOnMap) map.layers.remove(layer);
     layer.definitionExpression = defExp;
   });
 
@@ -791,7 +779,10 @@ function applyFilters(stateAbbr, fdid) {
 
   loadSummaryStats(defExp);
 }
- 
+
+// ─────────────────────────────────────────────────────────
+// MAP INITIALIZATION
+// ─────────────────────────────────────────────────────────
 async function initMap(definitionExpression) {
   const [Map, MapView, FeatureLayer] = await Promise.all([
     loadModule("esri/Map"),
@@ -799,7 +790,6 @@ async function initMap(definitionExpression) {
     loadModule("esri/layers/FeatureLayer"),
   ]);
 
-  // Create map and view FIRST with no layers
   map = new Map({ basemap: "gray-vector" });
 
   view = new MapView({
@@ -809,85 +799,67 @@ async function initMap(definitionExpression) {
     center: [-98.5, 39.5]
   });
 
-  // Wait for view to be fully ready BEFORE adding any layers
   await view.when();
 
-activeLayers = FEATURE_SERVICES.map(svc => new FeatureLayer({
-  url: svc.url,
-  title: `NFIRS ${svc.year}`,
-  definitionExpression,
-  outFields: MAP_OUT_FIELDS,
-  visible: true,
-  featureReduction: currentLevel === "state" ? {
-    type: "cluster",
-    clusterRadius: "60px",
-    popupTemplate: { title: "Cluster", content: "{cluster_count} incidents" }
-  } : null,
-  renderer: {
-    type: "simple",
-    symbol: {
-      type: "simple-marker",
-      size: 6,
-      color: [191, 87, 0, 200],
-      outline: { color: [255, 255, 255, 128], width: 0.5 }
+  activeLayers = FEATURE_SERVICES.map(svc => new FeatureLayer({
+    url: svc.url,
+    title: `NFIRS ${svc.year}`,
+    definitionExpression,
+    outFields: MAP_OUT_FIELDS,
+    visible: true,
+    featureReduction: currentLevel === "state" ? {
+      type: "cluster",
+      clusterRadius: "60px",
+      popupTemplate: { title: "Cluster", content: "{cluster_count} incidents" }
+    } : null,
+    renderer: {
+      type: "simple",
+      symbol: {
+        type: "simple-marker",
+        size: 6,
+        color: [191, 87, 0, 200],
+        outline: { color: [255, 255, 255, 128], width: 0.5 }
+      }
     }
-  }
-}));
+  }));
 
-// Add only active year layers
-const initialLayers = activeLayers.filter(l =>
-  activeYears.has(parseInt(l.title.replace("NFIRS ", "")))
-);
+  // Add only active year layers, staggered to avoid suspension
+  const initialLayers = activeLayers.filter(l =>
+    activeYears.has(parseInt(l.title.replace("NFIRS ", "")))
+  );
 
-initialLayers.forEach(l => map.layers.add(l));
+  initialLayers.forEach(l => map.layers.add(l));
 
-// Give the SDK a moment to render, then just proceed
-await new Promise(r => setTimeout(r, 1500));
+  // Give SDK time to render before proceeding
+  await new Promise(r => setTimeout(r, 1500));
 
-document.getElementById("loading-overlay").classList.add("hidden");
-zoomToJurisdiction();
-loadSummaryStats(definitionExpression);
-
-// Add only active year layers, waiting for each to fully initialize before the next
-const initialLayers = activeLayers.filter(l =>
-  activeYears.has(parseInt(l.title.replace("NFIRS ", "")))
-);
-
-for (const l of initialLayers) {
-  map.layers.add(l);
-  // Wait for this layer view to exist and become unsuspended before adding next
-  await new Promise(resolve => {
-    view.whenLayerView(l).then(lv => {
-      if (!lv.suspended) return resolve();
-      const handle = lv.watch("suspended", suspended => {
-        if (!suspended) {
-          handle.remove();
-          resolve();
-        }
-      });
-    });
-  });
+  document.getElementById("loading-overlay").classList.add("hidden");
+  zoomToJurisdiction();
+  loadSummaryStats(definitionExpression);
 }
 
-document.getElementById("loading-overlay").classList.add("hidden");
-zoomToJurisdiction();
-loadSummaryStats(definitionExpression);
-
+// ─────────────────────────────────────────────────────────
+// ZOOM TO JURISDICTION
+// ─────────────────────────────────────────────────────────
 async function zoomToJurisdiction() {
-  const layer = activeLayers.find(l => l.visible);
+  const layer = activeLayers.find(l => map.layers.includes(l));
   if (!layer) return;
   try {
     const result = await layer.queryExtent({ where: layer.definitionExpression });
     if (result?.extent) view.goTo(result.extent.expand(1.2));
-  } catch (e) { /* extent query failed silently */ }
+  } catch (e) { /* silent */ }
 }
+
+// ─────────────────────────────────────────────────────────
+// SUMMARY STATS
+// ─────────────────────────────────────────────────────────
 async function loadSummaryStats(definitionExpression) {
   ["stat-total","stat-fires","stat-ems","stat-ff-death","stat-oth-death","stat-aid-recv","stat-aid-given"]
     .forEach(id => document.getElementById(id).textContent = "…");
 
   let total = 0, fires = 0, ems = 0, ffDeath = 0, othDeath = 0, aidRecv = 0, aidGiven = 0;
 
-  const visibleLayers = activeLayers.filter(l => l.visible);
+  const visibleLayers = activeLayers.filter(l => map.layers.includes(l));
   if (!visibleLayers.length) {
     ["stat-total","stat-fires","stat-ems","stat-ff-death","stat-oth-death","stat-aid-recv","stat-aid-given"]
       .forEach(id => document.getElementById(id).textContent = "0");
@@ -930,12 +902,19 @@ async function loadSummaryStats(definitionExpression) {
   document.getElementById("stat-aid-recv").textContent  = aidRecv.toLocaleString();
   document.getElementById("stat-aid-given").textContent = aidGiven.toLocaleString();
 }
+
+// ─────────────────────────────────────────────────────────
+// RESET
+// ─────────────────────────────────────────────────────────
 function resetToGate() {
   document.getElementById("gate").classList.remove("hidden");
   document.getElementById("app").classList.remove("visible");
   history.replaceState({}, "", window.location.pathname);
 }
 
+// ─────────────────────────────────────────────────────────
+// RESTORE FROM URL
+// ─────────────────────────────────────────────────────────
 (function restoreFromUrl() {
   const p = new URLSearchParams(window.location.search);
   if (!p.get("state")) return;
@@ -954,9 +933,13 @@ function resetToGate() {
   }
 })();
 
+// ─────────────────────────────────────────────────────────
+// MODULE LOADER
+// ─────────────────────────────────────────────────────────
 function loadModule(moduleName) {
   return new Promise((resolve, reject) => require([moduleName], resolve, reject));
 }
+
 </script>
 </body>
 </html>
