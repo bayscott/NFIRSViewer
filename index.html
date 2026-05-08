@@ -465,9 +465,7 @@
 </div>
 
 <script>
-// ─────────────────────────────────────────────────────────
-// CONFIG
-// ─────────────────────────────────────────────────────────
+  
 const FEATURE_SERVICES = [
   { year: 2020, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_Service_2020/FeatureServer/0" },
   { year: 2021, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_2021/FeatureServer/0" },
@@ -493,9 +491,6 @@ const FIELD_FDID     = "FDID";
 const FIELD_INC_TYPE = "INC_TYPE";
 const MAP_OUT_FIELDS = ["OBJECTID", FIELD_STATE, FIELD_FDID, FIELD_INC_TYPE, "INC_DATE"];
 
-// ─────────────────────────────────────────────────────────
-// APP STATE
-// ─────────────────────────────────────────────────────────
 let currentLevel = "state";
 let map, view;
 let activeLayers  = [];   // FeatureLayer objects currently on the map
@@ -518,9 +513,6 @@ const STATES = [
   ["WI","Wisconsin"],["WY","Wyoming"]
 ];
 
-// ─────────────────────────────────────────────────────────
-// GATE — BUILD CHECKBOXES
-// ─────────────────────────────────────────────────────────
 (function buildGateControls() {
   // State dropdown
   const sel = document.getElementById("state-select");
@@ -629,9 +621,6 @@ function clearAllTypes() {
   updateGoBtn();
 }
 
-// ─────────────────────────────────────────────────────────
-// JURISDICTION GATE LOGIC
-// ─────────────────────────────────────────────────────────
 function setLevel(level) {
   currentLevel = level;
   document.getElementById("btn-state").classList.toggle("active", level === "state");
@@ -674,10 +663,6 @@ function updateGoBtn() {
   document.getElementById("go-btn").disabled = !ready;
 }
 
-// ─────────────────────────────────────────────────────────
-// BUILD definitionExpression — jurisdiction + type filter
-// Year filter is handled by only loading/showing the right layers.
-// ─────────────────────────────────────────────────────────
 function buildTypeClause() {
   if (activeTypes.size === INC_TYPES.length) return null; // all types — no filter needed
   const clauses = [...activeTypes].map(code => `${FIELD_INC_TYPE} LIKE '${code}%'`);
@@ -702,9 +687,6 @@ function buildDefinitionExpression(stateAbbr, fdid) {
   return parts.join(" AND ");
 }
 
-// ─────────────────────────────────────────────────────────
-// LAUNCH
-// ─────────────────────────────────────────────────────────
 async function launchApp() {
   const selectedOpt = document.getElementById("state-select").selectedOptions[0];
   const stateAbbr   = selectedOpt?.value || "";
@@ -733,9 +715,6 @@ async function launchApp() {
   }
 }
 
-// ─────────────────────────────────────────────────────────
-// TOPBAR CONTROLS
-// ─────────────────────────────────────────────────────────
 function buildTopbarControls(stateAbbr, fdid) {
   // Year chips
   const yearContainer = document.getElementById("topbar-year-toggles");
@@ -769,9 +748,6 @@ function buildTopbarControls(stateAbbr, fdid) {
   });
 }
 
-// ─────────────────────────────────────────────────────────
-// APPLY FILTERS — update definitionExpression and year visibility
-// ─────────────────────────────────────────────────────────
 function applyFilters(stateAbbr, fdid) {
   const defExp = buildDefinitionExpression(stateAbbr, fdid);
   document.getElementById("loading-overlay").classList.remove("hidden");
@@ -794,9 +770,6 @@ function applyFilters(stateAbbr, fdid) {
   loadSummaryStats(defExp);
 }
 
-// ─────────────────────────────────────────────────────────
-// MAP INITIALIZATION
-// ─────────────────────────────────────────────────────────
 async function initMap(definitionExpression) {
   const [Map, MapView, FeatureLayer, GroupLayer] = await Promise.all([
     loadModule("esri/Map"),
@@ -845,10 +818,6 @@ async function initMap(definitionExpression) {
     loadSummaryStats(definitionExpression);
   });
 }
-
-// ─────────────────────────────────────────────────────────
-// ZOOM TO JURISDICTION
-// ─────────────────────────────────────────────────────────
 async function zoomToJurisdiction() {
   const layer = activeLayers.find(l => l.visible);
   if (!layer) return;
@@ -857,10 +826,6 @@ async function zoomToJurisdiction() {
     if (result?.extent) view.goTo(result.extent.expand(1.2));
   } catch (e) { /* extent query failed silently */ }
 }
-
-// ─────────────────────────────────────────────────────────
-// SUMMARY STATS — all server-side, no record transfer
-// ─────────────────────────────────────────────────────────
 async function loadSummaryStats(definitionExpression) {
   ["stat-total","stat-fires","stat-ems","stat-ff-death","stat-oth-death","stat-aid-recv","stat-aid-given"]
     .forEach(id => document.getElementById(id).textContent = "…");
@@ -889,8 +854,8 @@ async function loadSummaryStats(definitionExpression) {
         where: definitionExpression,
         outStatistics: [{ statisticType: "sum", onStatisticField: "OTH_DEATH", outStatisticFieldName: "total" }]
       }),
-      layer.queryFeatureCount({ where: `${definitionExpression} AND AID IN (1, 2)` }),
-      layer.queryFeatureCount({ where: `${definitionExpression} AND AID IN (3, 4)` }),
+      layer.queryFeatureCount({ where: `${definitionExpression} AND AID IN ('1', '2')` }),
+      layer.queryFeatureCount({ where: `${definitionExpression} AND AID IN ('3', '4')` }),
     ]);
 
     total    += countRes;
@@ -910,19 +875,12 @@ async function loadSummaryStats(definitionExpression) {
   document.getElementById("stat-aid-recv").textContent  = aidRecv.toLocaleString();
   document.getElementById("stat-aid-given").textContent = aidGiven.toLocaleString();
 }
-
-// ─────────────────────────────────────────────────────────
-// RESET
-// ─────────────────────────────────────────────────────────
 function resetToGate() {
   document.getElementById("gate").classList.remove("hidden");
   document.getElementById("app").classList.remove("visible");
   history.replaceState({}, "", window.location.pathname);
 }
 
-// ─────────────────────────────────────────────────────────
-// RESTORE FROM URL
-// ─────────────────────────────────────────────────────────
 (function restoreFromUrl() {
   const p = new URLSearchParams(window.location.search);
   if (!p.get("state")) return;
@@ -941,9 +899,6 @@ function resetToGate() {
   }
 })();
 
-// ─────────────────────────────────────────────────────────
-// MODULE LOADER
-// ─────────────────────────────────────────────────────────
 function loadModule(moduleName) {
   return new Promise((resolve, reject) => require([moduleName], resolve, reject));
 }
