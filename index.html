@@ -83,6 +83,12 @@
       margin-bottom: 6px;
     }
 
+    .field-note {
+      font-size: 11px;
+      color: #aaa;
+      margin-top: 4px;
+    }
+
     .field-group select,
     .field-group input {
       width: 100%;
@@ -103,6 +109,7 @@
     }
 
     #dept-fields { display: none; }
+    #state-fdid-fields { display: block; }
 
     .gate-section-label {
       font-size: 12px;
@@ -275,7 +282,6 @@
       color: #fff;
     }
 
-    /* Incident type dropdown in topbar */
     #type-filter-wrapper {
       position: relative;
       flex-shrink: 0;
@@ -297,11 +303,6 @@
 
     #type-filter-btn:hover { background: rgba(255,255,255,0.08); }
     #type-filter-btn.has-filter { border-color: #BF5700; color: #fff; }
-
-    #type-filter-btn::after {
-      content: "▾";
-      font-size: 10px;
-    }
 
     #type-dropdown {
       display: none;
@@ -421,7 +422,6 @@
     .stat-row .label { color: #666; }
     .stat-row .value { font-weight: 600; color: #333F48; }
 
-    /* Export button */
     #export-section {
       padding: 16px 20px;
       border-top: 1px solid #eee;
@@ -504,6 +504,14 @@
       </select>
     </div>
 
+    <!-- Optional FDID filter for state users -->
+    <div class="field-group" id="state-fdid-fields">
+      <label>Filter by Department (optional)</label>
+      <input id="state-fdid-input" type="text" placeholder="Enter FDID to narrow to a single department" autocomplete="off" />
+      <p class="field-note">Leave blank to view all departments in the state.</p>
+    </div>
+
+    <!-- Department fields (level = dept only) -->
     <div id="dept-fields">
       <div class="field-group">
         <label>Department name or FDID</label>
@@ -547,7 +555,6 @@
     <div class="topbar-divider"></div>
     <div id="topbar-year-toggles"></div>
     <div class="topbar-divider"></div>
-    <!-- Incident type dropdown -->
     <div id="type-filter-wrapper">
       <button id="type-filter-btn" onclick="toggleTypeDropdown()">Incident Types</button>
       <div id="type-dropdown">
@@ -591,7 +598,6 @@
 
 <script>
 
-
 const FEATURE_SERVICES = [
   { year: 2020, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_Service_2020/FeatureServer/0" },
   { year: 2021, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_2021/FeatureServer/0" },
@@ -632,13 +638,13 @@ const EXPORT_FIELDS = [
   "EQ_INV_IGN", "MOB_PROP", "ACRES_BURN_WF", "Status", "Score", "Match_Addr", "Addr_type"
 ];
 
-let currentLevel = "state";
+let currentLevel    = "state";
 let map, view;
-let activeLayers = [];
-let activeYears  = new Set([2024]);
-let activeTypes  = new Set(INC_TYPES.map(t => t.code));
+let activeLayers    = [];
+let activeYears     = new Set([2024]);
+let activeTypes     = new Set(INC_TYPES.map(t => t.code));
 let currentStateAbbr = "";
-let currentFdid = "";
+let currentFdid     = "";
 
 const STATES = [
   ["AL","Alabama"],["AK","Alaska"],["AZ","Arizona"],["AR","Arkansas"],
@@ -655,6 +661,7 @@ const STATES = [
   ["VT","Vermont"],["VA","Virginia"],["WA","Washington"],["WV","West Virginia"],
   ["WI","Wisconsin"],["WY","Wyoming"]
 ];
+
 
 (function buildGateControls() {
   const sel = document.getElementById("state-select");
@@ -731,7 +738,6 @@ function clearAllYears() {
 function selectAllTypes() {
   INC_TYPES.forEach(t => {
     activeTypes.add(t.code);
-    // sync gate checkboxes
     const gInput = document.getElementById(`gate-type-${t.code}`);
     if (gInput) { gInput.checked = true; gInput.closest(".check-item").classList.add("checked"); }
   });
@@ -753,7 +759,8 @@ function setLevel(level) {
   currentLevel = level;
   document.getElementById("btn-state").classList.toggle("active", level === "state");
   document.getElementById("btn-dept").classList.toggle("active", level === "dept");
-  document.getElementById("dept-fields").style.display = level === "dept" ? "block" : "none";
+  document.getElementById("dept-fields").style.display        = level === "dept"  ? "block" : "none";
+  document.getElementById("state-fdid-fields").style.display  = level === "state" ? "block" : "none";
   updateGoBtn();
 }
 
@@ -766,6 +773,7 @@ function onStateChange() {
 async function loadDepartments(stateCode) {
   const sel = document.getElementById("dept-select");
   sel.innerHTML = "<option value=''>Loading…</option>";
+  // Replace with real lookup source
   const depts = [
     { fdid: "00001", name: "Sample Fire Department" },
     { fdid: "00002", name: "Another Fire District" },
@@ -827,22 +835,20 @@ function syncTypeDropdown() {
 
 function updateTypeFilterBtn() {
   const btn = document.getElementById("type-filter-btn");
+  if (!btn) return;
   if (activeTypes.size === INC_TYPES.length) {
-    btn.textContent = "Incident Types";
+    btn.textContent = "Incident Types ▾";
     btn.classList.remove("has-filter");
   } else {
-    btn.textContent = `Types (${activeTypes.size}/${INC_TYPES.length})`;
+    btn.textContent = `Types (${activeTypes.size}/${INC_TYPES.length}) ▾`;
     btn.classList.add("has-filter");
   }
-  btn.insertAdjacentHTML("beforeend", ' <span style="font-size:10px">▾</span>');
 }
 
 function toggleTypeDropdown() {
-  const dd = document.getElementById("type-dropdown");
-  dd.classList.toggle("open");
+  document.getElementById("type-dropdown").classList.toggle("open");
 }
 
-// Close dropdown when clicking outside
 document.addEventListener("click", e => {
   const wrapper = document.getElementById("type-filter-wrapper");
   if (wrapper && !wrapper.contains(e.target)) {
@@ -858,7 +864,16 @@ function buildTypeClause() {
 
 function buildDefinitionExpression(stateAbbr, fdid) {
   const parts = [`${FIELD_STATE} = '${stateAbbr}'`];
-  if (currentLevel === "dept") parts.push(`${FIELD_FDID} = '${fdid}'`);
+
+  if (currentLevel === "dept") {
+    // Department mode — filter by selected FDID
+    parts.push(`${FIELD_FDID} = '${fdid}'`);
+  } else {
+    // State mode — check optional FDID filter input
+    const stateFdid = document.getElementById("state-fdid-input")?.value.trim();
+    if (stateFdid) parts.push(`${FIELD_FDID} = '${stateFdid}'`);
+  }
+
   const typeClause = buildTypeClause();
   if (typeClause) parts.push(typeClause);
   return parts.join(" AND ");
@@ -880,9 +895,13 @@ async function launchApp() {
 
   await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-  const deptName = document.getElementById("dept-select").selectedOptions[0]?.text || "";
-  document.getElementById("jurisdiction-badge").textContent =
-    currentLevel === "state" ? stateName : `${deptName} · ${stateName}`;
+  // Build jurisdiction badge — include FDID if state user entered one
+  const stateFdid = document.getElementById("state-fdid-input")?.value.trim();
+  const deptName  = document.getElementById("dept-select").selectedOptions[0]?.text || "";
+  let badge = stateName;
+  if (currentLevel === "dept") badge = `${deptName} · ${stateName}`;
+  else if (stateFdid) badge = `${stateName} · FDID ${stateFdid}`;
+  document.getElementById("jurisdiction-badge").textContent = badge;
 
   buildTopbarYearChips();
   buildTypeDropdown();
@@ -992,7 +1011,6 @@ async function initMap(definitionExpression) {
   loadSummaryStats(definitionExpression);
 }
 
-
 async function zoomToJurisdiction() {
   const layer = activeLayers.find(l => map.layers.includes(l));
   if (!layer) return;
@@ -1046,8 +1064,6 @@ async function loadSummaryStats(definitionExpression) {
   document.getElementById("stat-aid-given").textContent = aidGiven.toLocaleString();
 }
 
-// CSV EXPORT
-
 async function exportCSV() {
   const btn    = document.getElementById("export-btn");
   const status = document.getElementById("export-status");
@@ -1059,7 +1075,6 @@ async function exportCSV() {
     return;
   }
 
-  // Check total record count first
   let totalCount = 0;
   for (const layer of visibleLayers) {
     totalCount += await layer.queryFeatureCount({ where: defExp });
@@ -1068,8 +1083,7 @@ async function exportCSV() {
   if (totalCount > 100000) {
     const ok = confirm(
       `This export contains ${totalCount.toLocaleString()} records across the selected years and filters.\n\n` +
-      `Large exports may take several minutes. Consider narrowing your year or incident type filters first.\n\n` +
-      `Continue?`
+      `Large exports may take several minutes. Consider narrowing your year or incident type filters first.\n\nContinue?`
     );
     if (!ok) return;
   }
@@ -1088,7 +1102,7 @@ async function exportCSV() {
       const pageSize = 2000;
 
       while (true) {
-        status.textContent = `Fetching ${layer.title}… (${(fetched).toLocaleString()} records)`;
+        status.textContent = `Fetching ${layer.title}… (${fetched.toLocaleString()} records)`;
 
         const result = await layer.queryFeatures({
           where: defExp,
@@ -1103,15 +1117,12 @@ async function exportCSV() {
 
         result.features.forEach(f => {
           const row = { YEAR: layerYear };
-          EXPORT_FIELDS.forEach(field => {
-            row[field] = f.attributes[field] ?? "";
-          });
+          EXPORT_FIELDS.forEach(field => { row[field] = f.attributes[field] ?? ""; });
           allRows.push(row);
         });
 
         fetched += result.features.length;
         offset  += pageSize;
-
         if (result.features.length < pageSize) break;
       }
     }
@@ -1123,23 +1134,24 @@ async function exportCSV() {
       return;
     }
 
-    // Build CSV
     const headers = ["YEAR", ...EXPORT_FIELDS];
     const csvLines = [
       headers.join(","),
       ...allRows.map(row =>
         headers.map(h => {
-          const val = row[h] ?? "";
-          return String(val).includes(",") ? `"${val}"` : val;
+          const val = String(row[h] ?? "");
+          return val.includes(",") || val.includes('"') ? `"${val.replace(/"/g, '""')}"` : val;
         }).join(",")
       )
     ];
 
+    const stateFdid = document.getElementById("state-fdid-input")?.value.trim();
+    const suffix = currentFdid ? `_${currentFdid}` : (stateFdid ? `_${stateFdid}` : "");
     const blob = new Blob([csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
     a.href     = url;
-    a.download = `NFIRS_${currentStateAbbr}${currentFdid ? "_" + currentFdid : ""}_export.csv`;
+    a.download = `NFIRS_${currentStateAbbr}${suffix}_export.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
