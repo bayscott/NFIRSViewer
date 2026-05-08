@@ -771,7 +771,7 @@ function applyFilters(stateAbbr, fdid) {
 }
 
 async function initMap(definitionExpression) {
-  const [Map, MapView, FeatureLayer, FeatureLayer] = await Promise.all([
+  const [Map, MapView, FeatureLayer] = await Promise.all([
     loadModule("esri/Map"),
     loadModule("esri/views/MapView"),
     loadModule("esri/layers/FeatureLayer"),
