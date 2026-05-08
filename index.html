@@ -509,6 +509,7 @@ async function initMap(definitionExpression) {
           title: "Cluster",
           content: "{cluster_count} incidents"
         },
+        } : null,   // department users get individual points — record count is small
 
       renderer: {
         type: "simple",
