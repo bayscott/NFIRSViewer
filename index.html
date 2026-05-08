@@ -141,7 +141,6 @@
       line-height: 1.5;
     }
 
-
     #app {
       display: none;
       height: 100vh;
@@ -161,7 +160,7 @@
       flex-shrink: 0;
     }
 
-    #topbar h2 { font-size: 15px; font-weight: 600; }
+    #topbar h2 { font-size: 15px; font-weight: 600; white-space: nowrap; }
 
     #jurisdiction-badge {
       background: rgba(255,255,255,0.12);
@@ -169,6 +168,31 @@
       padding: 3px 12px;
       font-size: 12px;
       color: #cde;
+      white-space: nowrap;
+    }
+
+    #topbar-year-toggles {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+
+    .topbar-year-chip {
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.3);
+      font-size: 12px;
+      cursor: pointer;
+      background: transparent;
+      color: rgba(255,255,255,0.6);
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .topbar-year-chip.active {
+      background: #BF5700;
+      border-color: #BF5700;
+      color: #fff;
     }
 
     #change-btn {
@@ -180,6 +204,7 @@
       padding: 4px 12px;
       font-size: 12px;
       cursor: pointer;
+      white-space: nowrap;
     }
 
     #change-btn:hover { background: rgba(255,255,255,0.08); }
@@ -211,36 +236,22 @@
       letter-spacing: 0.04em;
     }
 
-    #year-toggles {
-      padding: 12px 20px;
-      border-bottom: 1px solid #eee;
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
-    .year-chip {
-      padding: 4px 10px;
-      border-radius: 20px;
-      border: 1px solid #d0d0d0;
-      font-size: 12px;
-      cursor: pointer;
-      background: #fff;
-      color: #555;
-      transition: all 0.15s;
-    }
-
-    .year-chip.active {
-      background: #BF5700;
-      border-color: #BF5700;
-      color: #fff;
-    }
-
     #stats-panel {
       padding: 16px 20px;
       flex: 1;
       overflow-y: auto;
     }
+
+    .stat-section {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #BF5700;
+      padding: 12px 0 4px;
+    }
+
+    .stat-section:first-child { padding-top: 0; }
 
     .stat-row {
       display: flex;
@@ -280,7 +291,6 @@
       <button class="level-btn" id="btn-dept"  onclick="setLevel('dept')">Fire department</button>
     </div>
 
-    <!-- State picker (always shown) -->
     <div class="field-group">
       <label>State</label>
       <select id="state-select">
@@ -288,7 +298,6 @@
       </select>
     </div>
 
-    <!-- Department fields (level = dept only) -->
     <div id="dept-fields">
       <div class="field-group">
         <label>Department name or FDID</label>
@@ -306,11 +315,11 @@
   </div>
 </div>
 
-
 <div id="app">
   <div id="topbar">
     <h2>NFIRS Incident Viewer</h2>
     <span id="jurisdiction-badge"></span>
+    <div id="topbar-year-toggles"></div>
     <button id="change-btn" onclick="resetToGate()">Change jurisdiction</button>
   </div>
   <div id="main">
@@ -318,13 +327,18 @@
       <div id="loading-overlay">Loading incident data…</div>
     </div>
     <div id="sidebar">
-      <div class="sidebar-header">Years</div>
-      <div id="year-toggles"></div>
       <div class="sidebar-header">Summary</div>
       <div id="stats-panel">
+        <div class="stat-section">Incidents</div>
         <div class="stat-row"><span class="label">Total incidents</span><span class="value" id="stat-total">—</span></div>
-        <div class="stat-row"><span class="label">Structure fires</span><span class="value" id="stat-structure">—</span></div>
-        <div class="stat-row"><span class="label">EMS calls</span><span class="value" id="stat-ems">—</span></div>
+        <div class="stat-row"><span class="label">Total fires</span><span class="value" id="stat-fires">—</span></div>
+        <div class="stat-row"><span class="label">Total EMS</span><span class="value" id="stat-ems">—</span></div>
+        <div class="stat-section">Casualties</div>
+        <div class="stat-row"><span class="label">Firefighter deaths</span><span class="value" id="stat-ff-death">—</span></div>
+        <div class="stat-row"><span class="label">Civilian deaths</span><span class="value" id="stat-oth-death">—</span></div>
+        <div class="stat-section">Mutual Aid</div>
+        <div class="stat-row"><span class="label">Aid received</span><span class="value" id="stat-aid-recv">—</span></div>
+        <div class="stat-row"><span class="label">Aid given</span><span class="value" id="stat-aid-given">—</span></div>
       </div>
     </div>
   </div>
@@ -340,25 +354,17 @@ const FEATURE_SERVICES = [
   { year: 2024, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_Service_2024/FeatureServer/0" },
 ];
 
-// Fields
-const FIELD_STATE = "STATE";           
-const FIELD_FDID  = "FDID";            
-const FIELD_INC_TYPE = "INC_TYPE";     
+const FIELD_STATE    = "STATE";
+const FIELD_FDID     = "FDID";
+const FIELD_INC_TYPE = "INC_TYPE";
 
-// Minimal outFields for initial map render (fetch detail on popup only)
 const MAP_OUT_FIELDS = ["OBJECTID", FIELD_STATE, FIELD_FDID, FIELD_INC_TYPE, "INC_DATE"];
 
-// ─────────────────────────────────────────────────────────
-// STATE
-// ─────────────────────────────────────────────────────────
-let currentLevel = "state";   // "state" | "dept"
+let currentLevel = "state";
 let map, view;
-let activeLayers = [];        // FeatureLayer references currently on map
+let activeLayers = [];
 let activeYears = new Set([2024]);
 
-// ─────────────────────────────────────────────────────────
-// GATE UI
-// ─────────────────────────────────────────────────────────
 const STATES = [
   ["AL","Alabama"],["AK","Alaska"],["AZ","Arizona"],["AR","Arkansas"],
   ["CA","California"],["CO","Colorado"],["CT","Connecticut"],["DE","Delaware"],
@@ -379,8 +385,8 @@ const STATES = [
   const sel = document.getElementById("state-select");
   STATES.forEach(([abbr, name]) => {
     const opt = document.createElement("option");
-    opt.value = abbr;          // full name matches the STATE field in the feature service
-    opt.dataset.abbr = abbr;   // keep abbr available for URL params / dept lookup
+    opt.value = abbr;
+    opt.dataset.abbr = abbr;
     opt.textContent = name;
     sel.appendChild(opt);
   });
@@ -403,17 +409,11 @@ function onStateChange() {
   updateGoBtn();
 }
 
-// Dept lookup — replace this with a real lightweight lookup source
-// (e.g. a small JSON file or a low-record-count reference feature service)
 async function loadDepartments(stateCode) {
   const sel = document.getElementById("dept-select");
   sel.innerHTML = "<option value=''>Loading…</option>";
 
-  // EXAMPLE: fetch from a lightweight departments JSON you host separately
-  // const res = await fetch(`/data/departments/${stateCode}.json`);
-  // const depts = await res.json();
-
-  // Placeholder data — replace with real lookup
+  // Replace with real lookup source
   const depts = [
     { fdid: "00001", name: "Sample Fire Department" },
     { fdid: "00002", name: "Another Fire District" },
@@ -436,52 +436,42 @@ function updateGoBtn() {
   document.getElementById("go-btn").disabled = !ready;
 }
 
-function buildDefinitionExpression(level, stateName, fdid) {
+function buildDefinitionExpression(level, stateAbbr, fdid) {
   if (level === "state") {
-    return `${FIELD_STATE} = '${stateName}'`;
+    return `${FIELD_STATE} = '${stateAbbr}'`;
   } else {
-    // Always include state — belt AND suspenders against cross-state FDID collisions
-    return `${FIELD_STATE} = '${stateName}' AND ${FIELD_FDID} = '${fdid}'`;
+    return `${FIELD_STATE} = '${stateAbbr}' AND ${FIELD_FDID} = '${fdid}'`;
   }
 }
 
 async function launchApp() {
   const selectedOpt = document.getElementById("state-select").selectedOptions[0];
-  const stateAbbr   = selectedOpt?.value || "";               // 2-letter code — used in definitionExpression + URL
-  const stateName   = selectedOpt?.textContent || stateAbbr;  // full name — used for display only
+  const stateAbbr   = selectedOpt?.value || "";
+  const stateName   = selectedOpt?.textContent || stateAbbr;
   const fdid        = document.getElementById("dept-select").value;
 
   const defExp = buildDefinitionExpression(currentLevel, stateAbbr, fdid);
 
-  // Update URL so the view is bookmarkable / shareable
   const params = new URLSearchParams({ level: currentLevel, state: stateAbbr });
   if (fdid) params.set("fdid", fdid);
   history.replaceState({}, "", "?" + params.toString());
 
-  // Show app shell, hide gate
   document.getElementById("gate").classList.add("hidden");
   document.getElementById("app").classList.add("visible");
 
-  // Update topbar badge
   const deptName = document.getElementById("dept-select").selectedOptions[0]?.text || "";
   document.getElementById("jurisdiction-badge").textContent =
     currentLevel === "state" ? stateName : `${deptName} · ${stateName}`;
 
-  // Build year toggle chips
   buildYearToggles(defExp);
 
-  // Initialize map (only once)
   if (!map) {
     await initMap(defExp);
   } else {
-    // If user changed jurisdiction, swap definitionExpression on existing layers
     updateDefinitionExpression(defExp);
   }
 }
 
-// ─────────────────────────────────────────────────────────
-// MAP INITIALIZATION
-// ─────────────────────────────────────────────────────────
 async function initMap(definitionExpression) {
   const [Map, MapView, FeatureLayer, GroupLayer] =
     await Promise.all([
@@ -491,25 +481,22 @@ async function initMap(definitionExpression) {
       loadModule("esri/layers/GroupLayer"),
     ]);
 
-  // Build one FeatureLayer per year — ALL with definitionExpression applied
-  // before the layer is ever added to the map. No data loads until this point.
   activeLayers = FEATURE_SERVICES.map(svc => {
     return new FeatureLayer({
       url: svc.url,
       title: `NFIRS ${svc.year}`,
-      definitionExpression,          // ← server-side filter, applied before any query
-      outFields: MAP_OUT_FIELDS,     // ← only fetch fields needed for map render
+      definitionExpression,
+      outFields: MAP_OUT_FIELDS,
       visible: activeYears.has(svc.year),
 
-      // Clustering — critical for state-level users to avoid rendering 100K+ points
       featureReduction: currentLevel === "state" ? {
         type: "cluster",
         clusterRadius: "60px",
         popupTemplate: {
           title: "Cluster",
           content: "{cluster_count} incidents"
-        },
-        } : null,   // department users get individual points — record count is small
+        }
+      } : null,
 
       renderer: {
         type: "simple",
@@ -523,16 +510,14 @@ async function initMap(definitionExpression) {
     });
   });
 
-  // Wrap in a group layer so year visibility can be toggled cleanly
   const group = new GroupLayer({ layers: activeLayers, title: "NFIRS Incidents" });
-
   map = new Map({ basemap: "gray-vector", layers: [group] });
 
   view = new MapView({
     container: "viewDiv",
     map,
     zoom: currentLevel === "state" ? 6 : 12,
-    center: [-98.5, 39.5]   // default center; you can zoom to jurisdiction extent instead
+    center: [-98.5, 39.5]
   });
 
   view.when(() => {
@@ -542,29 +527,20 @@ async function initMap(definitionExpression) {
   });
 }
 
-// ─────────────────────────────────────────────────────────
-// ZOOM TO JURISDICTION EXTENT
-// ─────────────────────────────────────────────────────────
 async function zoomToJurisdiction() {
   if (!activeLayers.length) return;
-  // Query the extent of the first visible layer and zoom to it
   const layer = activeLayers.find(l => l.visible);
   if (!layer) return;
-
   const result = await layer.queryExtent({ where: layer.definitionExpression });
   if (result?.extent) {
     view.goTo(result.extent.expand(1.2));
   }
 }
 
-// ─────────────────────────────────────────────────────────
-// UPDATE definitionExpression (jurisdiction change)
-// ─────────────────────────────────────────────────────────
 function updateDefinitionExpression(definitionExpression) {
   document.getElementById("loading-overlay").classList.remove("hidden");
   activeLayers.forEach(layer => {
     layer.definitionExpression = definitionExpression;
-    // Update clustering based on new level
     layer.featureReduction = currentLevel === "state"
       ? { type: "cluster", clusterRadius: "60px" }
       : null;
@@ -577,14 +553,14 @@ function updateDefinitionExpression(definitionExpression) {
 }
 
 // ─────────────────────────────────────────────────────────
-// YEAR TOGGLES
+// YEAR TOGGLES — in topbar
 // ─────────────────────────────────────────────────────────
 function buildYearToggles(defExp) {
-  const container = document.getElementById("year-toggles");
+  const container = document.getElementById("topbar-year-toggles");
   container.innerHTML = "";
   FEATURE_SERVICES.forEach(svc => {
     const chip = document.createElement("button");
-    chip.className = "year-chip active";
+    chip.className = "topbar-year-chip" + (activeYears.has(svc.year) ? " active" : "");
     chip.textContent = svc.year;
     chip.dataset.year = svc.year;
     chip.onclick = () => toggleYear(svc.year, chip, defExp);
@@ -606,46 +582,76 @@ function toggleYear(year, chip, defExp) {
 }
 
 // ─────────────────────────────────────────────────────────
-// SUMMARY STATS (queried server-side — no full record pull)
+// SUMMARY STATS
 // ─────────────────────────────────────────────────────────
 async function loadSummaryStats(definitionExpression) {
-  document.getElementById("stat-total").textContent = "…";
-  document.getElementById("stat-structure").textContent = "…";
-  document.getElementById("stat-ems").textContent = "…";
+  ["stat-total","stat-fires","stat-ems","stat-ff-death","stat-oth-death","stat-aid-recv","stat-aid-given"]
+    .forEach(id => document.getElementById(id).textContent = "…");
 
-  let total = 0, structure = 0, ems = 0;
+  let total = 0, fires = 0, ems = 0, ffDeath = 0, othDeath = 0, aidRecv = 0, aidGiven = 0;
 
-  // Run stats queries in parallel across visible year layers
   const visibleLayers = activeLayers.filter(l => l.visible);
 
+  // Exact EMS codes per spec
+  const emsCodes = "3,30,300,31,311,32,320,321,322,323,324";
+  const emsWhere = `${FIELD_INC_TYPE} IN (${emsCodes})`;
+
   await Promise.all(visibleLayers.map(async layer => {
-    const [countResult, structResult, emsResult] = await Promise.all([
+    const [
+      countResult,
+      firesResult,
+      emsResult,
+      ffDeathResult,
+      othDeathResult,
+      aidRecvResult,
+      aidGivenResult
+    ] = await Promise.all([
+      // Total incidents
       layer.queryFeatureCount({ where: definitionExpression }),
-      layer.queryFeatureCount({ where: `${definitionExpression} AND ${FIELD_INC_TYPE} LIKE '1%'` }),  // structure fire codes
-      layer.queryFeatureCount({ where: `${definitionExpression} AND ${FIELD_INC_TYPE} LIKE '3%'` }),  // EMS codes
+      // Fires — INC_TYPE starts with 1
+      layer.queryFeatureCount({ where: `${definitionExpression} AND ${FIELD_INC_TYPE} LIKE '1%'` }),
+      // EMS — exact codes
+      layer.queryFeatureCount({ where: `${definitionExpression} AND ${emsWhere}` }),
+      // FF deaths — server-side sum
+      layer.queryFeatures({
+        where: definitionExpression,
+        outStatistics: [{ statisticType: "sum", onStatisticField: "FF_DEATH", outStatisticFieldName: "total" }]
+      }),
+      // Civilian deaths — server-side sum
+      layer.queryFeatures({
+        where: definitionExpression,
+        outStatistics: [{ statisticType: "sum", onStatisticField: "OTH_DEATH", outStatisticFieldName: "total" }]
+      }),
+      // Aid received — AID IN (1, 2)
+      layer.queryFeatureCount({ where: `${definitionExpression} AND AID IN (1, 2)` }),
+      // Aid given — AID IN (3, 4)
+      layer.queryFeatureCount({ where: `${definitionExpression} AND AID IN (3, 4)` }),
     ]);
-    total     += countResult;
-    structure += structResult;
-    ems       += emsResult;
+
+    total    += countResult;
+    fires    += firesResult;
+    ems      += emsResult;
+    ffDeath  += (ffDeathResult.features[0]?.attributes?.total || 0);
+    othDeath += (othDeathResult.features[0]?.attributes?.total || 0);
+    aidRecv  += aidRecvResult;
+    aidGiven += aidGivenResult;
   }));
 
   document.getElementById("stat-total").textContent     = total.toLocaleString();
-  document.getElementById("stat-structure").textContent = structure.toLocaleString();
+  document.getElementById("stat-fires").textContent     = fires.toLocaleString();
   document.getElementById("stat-ems").textContent       = ems.toLocaleString();
+  document.getElementById("stat-ff-death").textContent  = ffDeath.toLocaleString();
+  document.getElementById("stat-oth-death").textContent = othDeath.toLocaleString();
+  document.getElementById("stat-aid-recv").textContent  = aidRecv.toLocaleString();
+  document.getElementById("stat-aid-given").textContent = aidGiven.toLocaleString();
 }
 
-// ─────────────────────────────────────────────────────────
-// RESET — return to gate without reloading the page
-// ─────────────────────────────────────────────────────────
 function resetToGate() {
   document.getElementById("gate").classList.remove("hidden");
   document.getElementById("app").classList.remove("visible");
   history.replaceState({}, "", window.location.pathname);
 }
 
-// ─────────────────────────────────────────────────────────
-// RESTORE FROM URL (bookmarked / shared link)
-// ─────────────────────────────────────────────────────────
 (function restoreFromUrl() {
   const p = new URLSearchParams(window.location.search);
   if (!p.get("state")) return;
@@ -653,7 +659,6 @@ function resetToGate() {
   document.getElementById("state-select").value = p.get("state");
   if (p.get("level") === "dept") {
     setLevel("dept");
-    // Dept select population is async — trigger the state change flow
     onStateChange().then(() => {
       if (p.get("fdid")) {
         document.getElementById("dept-select").value = p.get("fdid");
@@ -668,9 +673,6 @@ function resetToGate() {
   }
 })();
 
-// ─────────────────────────────────────────────────────────
-// ARCGIS MODULE LOADER HELPER
-// ─────────────────────────────────────────────────────────
 function loadModule(moduleName) {
   return new Promise((resolve, reject) => {
     require([moduleName], resolve, reject);
