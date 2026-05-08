@@ -771,11 +771,10 @@ function applyFilters(stateAbbr, fdid) {
 }
 
 async function initMap(definitionExpression) {
-  const [Map, MapView, FeatureLayer, GroupLayer] = await Promise.all([
+  const [Map, MapView, FeatureLayer, FeatureLayer] = await Promise.all([
     loadModule("esri/Map"),
     loadModule("esri/views/MapView"),
     loadModule("esri/layers/FeatureLayer"),
-    loadModule("esri/layers/GroupLayer"),
   ]);
 
   activeLayers = FEATURE_SERVICES.map(svc => new FeatureLayer({
@@ -802,8 +801,7 @@ async function initMap(definitionExpression) {
     }
   }));
 
-  const group = new GroupLayer({ layers: activeLayers, title: "NFIRS Incidents" });
-  map = new Map({ basemap: "gray-vector", layers: [group] });
+  map = new Map({ basemap: "gray-vector", layers: activeLayers });
 
   view = new MapView({
     container: "viewDiv",
