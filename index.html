@@ -808,52 +808,44 @@ async function initMap(definitionExpression) {
   // Wait for view to be fully ready BEFORE adding any layers
   await view.when();
 
-  // NOW build and add only the active year layers
-  activeLayers = FEATURE_SERVICES.map(svc => new FeatureLayer({
-    url: svc.url,
-    title: `NFIRS ${svc.year}`,
-    definitionExpression,
-    outFields: MAP_OUT_FIELDS,
-    visible: true,
-
-    featureReduction: currentLevel === "state" ? {
-      type: "cluster",
-      clusterRadius: "60px",
-      popupTemplate: { title: "Cluster", content: "{cluster_count} incidents" }
-    } : null,
-
-    renderer: {
-      type: "simple",
-      symbol: {
-        type: "simple-marker",
-        size: 6,
-        color: [191, 87, 0, 200],
-        outline: { color: [255, 255, 255, 128], width: 0.5 }
-      }
+  // Build all layers
+activeLayers = FEATURE_SERVICES.map(svc => new FeatureLayer({
+  url: svc.url,
+  title: `NFIRS ${svc.year}`,
+  definitionExpression,
+  outFields: MAP_OUT_FIELDS,
+  visible: true,
+  featureReduction: currentLevel === "state" ? {
+    type: "cluster",
+    clusterRadius: "60px",
+    popupTemplate: { title: "Cluster", content: "{cluster_count} incidents" }
+  } : null,
+  renderer: {
+    type: "simple",
+    symbol: {
+      type: "simple-marker",
+      size: 6,
+      color: [191, 87, 0, 200],
+      outline: { color: [255, 255, 255, 128], width: 0.5 }
     }
-  }));
-
-  // Add only active year layers after view is ready
-  const initialLayers = activeLayers.filter(l =>
-    activeYears.has(parseInt(l.title.replace("NFIRS ", "")))
-  );
-  initialLayers.forEach(l => map.layers.add(l));
-
-  // Wait for the added layer to finish rendering
-  const layerToWatch = initialLayers[initialLayers.length - 1];
-  if (layerToWatch) {
-    const lv = await view.whenLayerView(layerToWatch);
-    await new Promise(resolve => {
-      if (!lv.updating) return resolve();
-      const handle = lv.watch("updating", updating => {
-        if (!updating) { handle.remove(); resolve(); }
-      });
-    });
   }
+}));
 
-  document.getElementById("loading-overlay").classList.add("hidden");
-  zoomToJurisdiction();
-  loadSummaryStats(definitionExpression);
+// Add only active year layers
+const initialLayers = activeLayers.filter(l =>
+  activeYears.has(parseInt(l.title.replace("NFIRS ", "")))
+);
+
+// Add, then immediately remove, then re-add after a tick
+// Forces the SDK to create a fresh unsuspended layer view
+for (const l of initialLayers) {
+  map.layers.add(l);
+  await new Promise(r => setTimeout(r, 50));
+}
+
+document.getElementById("loading-overlay").classList.add("hidden");
+zoomToJurisdiction();
+loadSummaryStats(definitionExpression);
 } 
 async function zoomToJurisdiction() {
   const layer = activeLayers.find(l => l.visible);
