@@ -221,7 +221,6 @@
     #app { display: none; height: 100vh; flex-direction: column; }
     #app.visible { display: flex; }
 
-    /* overflow: visible is critical — allows type dropdown to escape the bar */
     #topbar {
       height: 52px;
       background: #333F48;
@@ -279,7 +278,6 @@
       color: #fff;
     }
 
-    /* Type filter dropdown — positioned relative to wrapper, z-index above map */
     #type-filter-wrapper {
       position: relative;
       flex-shrink: 0;
@@ -633,7 +631,7 @@
         <div id="fdid-filter-inner">
           <input id="state-fdid-input" type="text" placeholder="Enter FDID…" autocomplete="off" />
           <p>Leave blank to view all departments</p>
-          <button id="fdid-apply-btn" onclick="applyFilters(currentStateAbbr, currentFdid)">Apply</button>
+          <button id="fdid-apply-btn">Apply</button>
         </div>
       </div>
 
@@ -687,13 +685,15 @@ const EXPORT_FIELDS = [
   "EQ_INV_IGN", "MOB_PROP", "ACRES_BURN_WF", "Status", "Score", "Match_Addr", "Addr_type"
 ];
 
-let currentLevel     = "state";
+
+let currentLevel      = "state";
 let map, view;
-let activeLayers     = [];
-let activeYears      = new Set([2024]);
-let activeTypes      = new Set(INC_TYPES.map(t => t.code));
-let currentStateAbbr = "";
-let currentFdid      = "";
+let activeLayers      = [];
+let activeYears       = new Set([2024]);
+let activeTypes       = new Set(INC_TYPES.map(t => t.code));
+let currentStateAbbr  = "";
+let currentFdid       = "";
+let currentSidebarFdid = "";  // FDID entered in sidebar after load
 
 const STATES = [
   ["AL","Alabama"],["AK","Alaska"],["AZ","Arizona"],["AR","Arkansas"],
@@ -914,10 +914,8 @@ function buildDefinitionExpression(stateAbbr, fdid) {
 
   if (currentLevel === "dept") {
     parts.push(`${FIELD_FDID} = '${fdid}'`);
-  } else {
-    // State mode — check optional sidebar FDID filter
-    const stateFdid = document.getElementById("state-fdid-input")?.value.trim();
-    if (stateFdid) parts.push(`${FIELD_FDID} = '${stateFdid}'`);
+  } else if (currentSidebarFdid) {
+    parts.push(`${FIELD_FDID} = '${currentSidebarFdid}'`);
   }
 
   const typeClause = buildTypeClause();
@@ -945,9 +943,13 @@ async function launchApp() {
   document.getElementById("jurisdiction-badge").textContent =
     currentLevel === "state" ? stateName : `${deptName} · ${stateName}`;
 
-  // Show FDID filter in sidebar only for state users
   document.getElementById("fdid-filter-section").style.display =
     currentLevel === "state" ? "block" : "none";
+
+  document.getElementById("fdid-apply-btn").onclick = () => {
+    currentSidebarFdid = document.getElementById("state-fdid-input").value.trim();
+    applyFilters(currentStateAbbr, currentFdid);
+  };
 
   buildTopbarYearChips();
   buildTypeDropdown();
@@ -1119,8 +1121,8 @@ async function exportCSV() {
     status.textContent = "No active layers to export.";
     return;
   }
+
   const defExp = visibleLayers[0].definitionExpression;
-  console.log("Exporting with filter:", defExp);  
 
   let totalCount = 0;
   for (const layer of visibleLayers) {
@@ -1214,7 +1216,6 @@ async function exportCSV() {
   btn.disabled = false;
   btn.textContent = "↓ Export to CSV";
 }
-
 
 function resetToGate() {
   document.getElementById("gate").classList.remove("hidden");
