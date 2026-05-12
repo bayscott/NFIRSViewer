@@ -1113,13 +1113,14 @@ async function loadSummaryStats(definitionExpression) {
 async function exportCSV() {
   const btn    = document.getElementById("export-btn");
   const status = document.getElementById("export-status");
-  const defExp = buildDefinitionExpression(currentStateAbbr, currentFdid);
 
   const visibleLayers = activeLayers.filter(l => map.layers.includes(l));
   if (!visibleLayers.length) {
     status.textContent = "No active layers to export.";
     return;
   }
+  const defExp = visibleLayers[0].definitionExpression;
+  console.log("Exporting with filter:", defExp);  
 
   let totalCount = 0;
   for (const layer of visibleLayers) {
