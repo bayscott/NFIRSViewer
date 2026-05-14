@@ -1083,13 +1083,6 @@ async function exportCSV() {
   btn.textContent = "Exporting…";
   status.textContent = "Fetching records…";
 
-  // Split fields into chunks of 15 to avoid AGO dropping the WHERE clause
-  const CHUNK_SIZE = 15;
-  const fieldChunks = [];
-  for (let i = 0; i < EXPORT_FIELDS.length; i += CHUNK_SIZE) {
-    fieldChunks.push(EXPORT_FIELDS.slice(i, i + CHUNK_SIZE));
-  }
-
   try {
     const allRows = [];
     let fetched = 0;
@@ -1102,45 +1095,26 @@ async function exportCSV() {
       while (true) {
         status.textContent = `Fetching ${layer.title}… (${fetched.toLocaleString()} records)`;
 
-        // First chunk always includes OBJECTID as the join key
-        const firstChunk = await layer.queryFeatures({
+        const result = await layer.queryFeatures({
           where: defExp,
-          outFields: ["OBJECTID", ...fieldChunks[0]],
+          outFields: EXPORT_FIELDS,
           returnGeometry: false,
           resultOffset: offset,
           resultRecordCount: pageSize,
           orderByFields: ["OBJECTID ASC"]
         });
 
-        if (!firstChunk.features.length) break;
+        if (!result.features.length) break;
 
-        // Build row map keyed by OBJECTID
-        const rowMap = {};
-        firstChunk.features.forEach(f => {
-          rowMap[f.attributes.OBJECTID] = { YEAR: layerYear, ...f.attributes };
+        result.features.forEach(f => {
+          const row = { YEAR: layerYear };
+          EXPORT_FIELDS.forEach(field => { row[field] = f.attributes[field] ?? ""; });
+          allRows.push(row);
         });
 
-        const objectIds = firstChunk.features.map(f => f.attributes.OBJECTID);
-
-        // Fetch remaining field chunks using OBJECTID IN (...) 
-        for (let c = 1; c < fieldChunks.length; c++) {
-          const chunkResult = await layer.queryFeatures({
-            where: `OBJECTID IN (${objectIds.join(",")})`,
-            outFields: ["OBJECTID", ...fieldChunks[c]],
-            returnGeometry: false
-          });
-          chunkResult.features.forEach(f => {
-            if (rowMap[f.attributes.OBJECTID]) {
-              Object.assign(rowMap[f.attributes.OBJECTID], f.attributes);
-            }
-          });
-        }
-
-        Object.values(rowMap).forEach(row => allRows.push(row));
-
-        fetched += firstChunk.features.length;
+        fetched += result.features.length;
         offset  += pageSize;
-        if (firstChunk.features.length < pageSize) break;
+        if (result.features.length < pageSize) break;
       }
     }
 
@@ -1183,7 +1157,6 @@ async function exportCSV() {
   btn.disabled = false;
   btn.textContent = "↓ Export to CSV";
 }
-
 // ─────────────────────────────────────────────────────────
 // RESET
 // ─────────────────────────────────────────────────────────
