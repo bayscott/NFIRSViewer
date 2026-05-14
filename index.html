@@ -51,27 +51,6 @@
       line-height: 1.5;
     }
 
-    .level-toggle { display: flex; gap: 8px; margin-bottom: 24px; }
-
-    .level-btn {
-      flex: 1;
-      padding: 10px;
-      border: 1.5px solid #d0d0d0;
-      border-radius: 8px;
-      background: #fff;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s;
-      color: #333;
-    }
-
-    .level-btn.active {
-      border-color: #BF5700;
-      background: #fff5ef;
-      color: #BF5700;
-    }
-
     .field-group { margin-bottom: 16px; }
 
     .field-group label {
@@ -102,8 +81,6 @@
       outline: none;
       border-color: #BF5700;
     }
-
-    #dept-fields { display: none; }
 
     .gate-section-label {
       font-size: 12px;
@@ -416,14 +393,9 @@
     .stat-row .label { color: #666; }
     .stat-row .value { font-weight: 600; color: #333F48; }
 
-    /* FDID filter section in sidebar */
     #fdid-filter-section {
       border-top: 1px solid #eee;
       flex-shrink: 0;
-    }
-
-    #fdid-filter-section .sidebar-header {
-      border-bottom: 1px solid #eee;
     }
 
     #fdid-filter-inner {
@@ -467,7 +439,6 @@
 
     #fdid-apply-btn:hover { background: #a34a00; }
 
-    /* Export section */
     #export-section {
       padding: 16px 20px;
       border-top: 1px solid #eee;
@@ -532,30 +503,13 @@
 <div id="gate">
   <div class="gate-card">
     <h1>NFIRS Incident Viewer</h1>
-    <p>Select your jurisdiction and filters. Data loads only after you confirm.</p>
-
-    <div class="level-toggle">
-      <button class="level-btn active" id="btn-state" onclick="setLevel('state')">State agency</button>
-      <button class="level-btn" id="btn-dept" onclick="setLevel('dept')">Fire department</button>
-    </div>
+    <p>Select your state and filters. Data loads only after you confirm.</p>
 
     <div class="field-group">
       <label>State</label>
       <select id="state-select">
         <option value="">— Select State —</option>
       </select>
-    </div>
-
-    <div id="dept-fields">
-      <div class="field-group">
-        <label>Department name or FDID</label>
-        <input id="dept-input" type="text" placeholder="Search department…" autocomplete="off" />
-      </div>
-      <div class="field-group">
-        <select id="dept-select">
-          <option value="">— Select Department —</option>
-        </select>
-      </div>
     </div>
 
     <div class="field-group">
@@ -593,13 +547,13 @@
       <button id="type-filter-btn" onclick="toggleTypeDropdown()">Incident Types ▾</button>
       <div id="type-dropdown">
         <div class="type-dropdown-header">
-          <button onclick="selectAllTypes(); syncTypeDropdown(); applyFilters(currentStateAbbr, currentFdid); event.stopPropagation()">All</button>
-          <button onclick="clearAllTypes(); syncTypeDropdown(); applyFilters(currentStateAbbr, currentFdid); event.stopPropagation()">None</button>
+          <button onclick="selectAllTypes(); syncTypeDropdown(); applyFilters(); event.stopPropagation()">All</button>
+          <button onclick="clearAllTypes(); syncTypeDropdown(); applyFilters(); event.stopPropagation()">None</button>
         </div>
         <div id="type-dropdown-items"></div>
       </div>
     </div>
-    <button id="change-btn" onclick="resetToGate()">Change jurisdiction</button>
+    <button id="change-btn" onclick="resetToGate()">Change state</button>
   </div>
 
   <div id="main">
@@ -625,8 +579,7 @@
         <div class="stat-row"><span class="label">Aid given</span><span class="value" id="stat-aid-given">—</span></div>
       </div>
 
-      <!-- FDID filter — state users only, shown after load -->
-      <div id="fdid-filter-section" style="display:none;">
+      <div id="fdid-filter-section">
         <div class="sidebar-header">Filter by Department</div>
         <div id="fdid-filter-inner">
           <input id="state-fdid-input" type="text" placeholder="Enter FDID…" autocomplete="off" />
@@ -645,6 +598,9 @@
 
 <script>
 
+// ─────────────────────────────────────────────────────────
+// CONFIG
+// ─────────────────────────────────────────────────────────
 const FEATURE_SERVICES = [
   { year: 2020, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_Service_2020/FeatureServer/0" },
   { year: 2021, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_2021/FeatureServer/0" },
@@ -685,14 +641,14 @@ const EXPORT_FIELDS = [
   "EQ_INV_IGN", "MOB_PROP", "ACRES_BURN_WF", "Status", "Score", "Match_Addr", "Addr_type"
 ];
 
-
-let currentLevel      = "state";
+// ─────────────────────────────────────────────────────────
+// APP STATE
+// ─────────────────────────────────────────────────────────
 let map, view;
-let activeLayers      = [];
-let activeYears       = new Set([2024]);
-let activeTypes       = new Set(INC_TYPES.map(t => t.code));
-let currentStateAbbr  = "";
-let currentFdid       = "";
+let activeLayers       = [];
+let activeYears        = new Set([2024]);
+let activeTypes        = new Set(INC_TYPES.map(t => t.code));
+let currentStateAbbr   = "";
 let currentSidebarFdid = "";  // FDID entered in sidebar after load
 
 const STATES = [
@@ -711,6 +667,9 @@ const STATES = [
   ["WI","Wisconsin"],["WY","Wyoming"]
 ];
 
+// ─────────────────────────────────────────────────────────
+// GATE CONTROLS
+// ─────────────────────────────────────────────────────────
 (function buildGateControls() {
   const sel = document.getElementById("state-select");
   STATES.forEach(([abbr, name]) => {
@@ -719,7 +678,7 @@ const STATES = [
     opt.textContent = name;
     sel.appendChild(opt);
   });
-  sel.addEventListener("change", onStateChange);
+  sel.addEventListener("change", updateGoBtn);
 
   const yearGrid = document.getElementById("gate-year-checks");
   FEATURE_SERVICES.forEach(svc => {
@@ -803,48 +762,15 @@ function clearAllTypes() {
   syncTypeDropdown();
 }
 
-function setLevel(level) {
-  currentLevel = level;
-  document.getElementById("btn-state").classList.toggle("active", level === "state");
-  document.getElementById("btn-dept").classList.toggle("active", level === "dept");
-  document.getElementById("dept-fields").style.display = level === "dept" ? "block" : "none";
-  updateGoBtn();
-}
-
-function onStateChange() {
-  const state = document.getElementById("state-select").value;
-  if (currentLevel === "dept" && state) loadDepartments(state);
-  updateGoBtn();
-}
-
-async function loadDepartments(stateCode) {
-  const sel = document.getElementById("dept-select");
-  sel.innerHTML = "<option value=''>Loading…</option>";
-  // Replace with real lookup source
-  const depts = [
-    { fdid: "00001", name: "Sample Fire Department" },
-    { fdid: "00002", name: "Another Fire District" },
-  ];
-  sel.innerHTML = "<option value=''>— Select department —</option>";
-  depts.forEach(d => {
-    const opt = document.createElement("option");
-    opt.value = d.fdid;
-    opt.textContent = `${d.name} (${d.fdid})`;
-    sel.appendChild(opt);
-  });
-  sel.addEventListener("change", updateGoBtn);
-}
-
 function updateGoBtn() {
   const state = document.getElementById("state-select").value;
-  const dept  = document.getElementById("dept-select").value;
-  const ready = state
-    && (currentLevel === "state" || dept)
-    && activeYears.size > 0
-    && activeTypes.size > 0;
+  const ready = state && activeYears.size > 0 && activeTypes.size > 0;
   document.getElementById("go-btn").disabled = !ready;
 }
 
+// ─────────────────────────────────────────────────────────
+// TYPE DROPDOWN (topbar)
+// ─────────────────────────────────────────────────────────
 function buildTypeDropdown() {
   const container = document.getElementById("type-dropdown-items");
   container.innerHTML = "";
@@ -859,7 +785,7 @@ function buildTypeDropdown() {
     input.addEventListener("change", () => {
       activeTypes.has(t.code) ? activeTypes.delete(t.code) : activeTypes.add(t.code);
       updateTypeFilterBtn();
-      applyFilters(currentStateAbbr, currentFdid);
+      applyFilters();
     });
 
     const span = document.createElement("span");
@@ -903,35 +829,34 @@ document.addEventListener("click", e => {
   }
 });
 
+// ─────────────────────────────────────────────────────────
+// FILTER BUILDER
+// Single source of truth — all filters combined here
+// ─────────────────────────────────────────────────────────
 function buildTypeClause() {
   if (activeTypes.size === INC_TYPES.length) return null;
   const clauses = [...activeTypes].map(code => `${FIELD_INC_TYPE} LIKE '${code}%'`);
   return `(${clauses.join(" OR ")})`;
 }
 
-function buildDefinitionExpression(stateAbbr, fdid) {
-  const parts = [`${FIELD_STATE} = '${stateAbbr}'`];
-
-  if (currentLevel === "dept") {
-    parts.push(`${FIELD_FDID} = '${fdid}'`);
-  } else if (currentSidebarFdid) {
-    parts.push(`${FIELD_FDID} = '${currentSidebarFdid}'`);
-  }
-
+function buildDefinitionExpression() {
+  const parts = [`${FIELD_STATE} = '${currentStateAbbr}'`];
+  if (currentSidebarFdid) parts.push(`${FIELD_FDID} = '${currentSidebarFdid}'`);
   const typeClause = buildTypeClause();
   if (typeClause) parts.push(typeClause);
   return parts.join(" AND ");
 }
 
+// ─────────────────────────────────────────────────────────
+// LAUNCH
+// ─────────────────────────────────────────────────────────
 async function launchApp() {
-  const selectedOpt = document.getElementById("state-select").selectedOptions[0];
-  currentStateAbbr  = selectedOpt?.value || "";
-  const stateName   = selectedOpt?.textContent || currentStateAbbr;
-  currentFdid       = document.getElementById("dept-select").value;
-  const defExp      = buildDefinitionExpression(currentStateAbbr, currentFdid);
+  const selectedOpt  = document.getElementById("state-select").selectedOptions[0];
+  currentStateAbbr   = selectedOpt?.value || "";
+  const stateName    = selectedOpt?.textContent || currentStateAbbr;
+  currentSidebarFdid = "";  // reset on each launch
 
-  const params = new URLSearchParams({ level: currentLevel, state: currentStateAbbr });
-  if (currentFdid) params.set("fdid", currentFdid);
+  const params = new URLSearchParams({ state: currentStateAbbr });
   history.replaceState({}, "", "?" + params.toString());
 
   document.getElementById("gate").classList.add("hidden");
@@ -939,28 +864,30 @@ async function launchApp() {
 
   await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-  const deptName = document.getElementById("dept-select").selectedOptions[0]?.text || "";
-  document.getElementById("jurisdiction-badge").textContent =
-    currentLevel === "state" ? stateName : `${deptName} · ${stateName}`;
+  document.getElementById("jurisdiction-badge").textContent = stateName;
 
-  document.getElementById("fdid-filter-section").style.display =
-    currentLevel === "state" ? "block" : "none";
-
+  // Wire up FDID Apply button
   document.getElementById("fdid-apply-btn").onclick = () => {
     currentSidebarFdid = document.getElementById("state-fdid-input").value.trim();
-    applyFilters(currentStateAbbr, currentFdid);
+    // Update badge to reflect FDID filter if set
+    document.getElementById("jurisdiction-badge").textContent =
+      currentSidebarFdid ? `${stateName} · FDID ${currentSidebarFdid}` : stateName;
+    applyFilters();
   };
 
   buildTopbarYearChips();
   buildTypeDropdown();
 
   if (!map) {
-    await initMap(defExp);
+    await initMap();
   } else {
-    applyFilters(currentStateAbbr, currentFdid);
+    applyFilters();
   }
 }
 
+// ─────────────────────────────────────────────────────────
+// TOPBAR YEAR CHIPS
+// ─────────────────────────────────────────────────────────
 function buildTopbarYearChips() {
   const container = document.getElementById("topbar-year-toggles");
   container.innerHTML = "";
@@ -971,14 +898,17 @@ function buildTopbarYearChips() {
     chip.onclick = () => {
       activeYears.has(svc.year) ? activeYears.delete(svc.year) : activeYears.add(svc.year);
       chip.classList.toggle("active", activeYears.has(svc.year));
-      applyFilters(currentStateAbbr, currentFdid);
+      applyFilters();
     };
     container.appendChild(chip);
   });
 }
 
-function applyFilters(stateAbbr, fdid) {
-  const defExp = buildDefinitionExpression(stateAbbr, fdid);
+// ─────────────────────────────────────────────────────────
+// APPLY FILTERS
+// ─────────────────────────────────────────────────────────
+function applyFilters() {
+  const defExp = buildDefinitionExpression();
   document.getElementById("loading-overlay").classList.remove("hidden");
 
   activeLayers.forEach(layer => {
@@ -1005,7 +935,12 @@ function applyFilters(stateAbbr, fdid) {
   loadSummaryStats(defExp);
 }
 
-async function initMap(definitionExpression) {
+// ─────────────────────────────────────────────────────────
+// MAP INITIALIZATION
+// ─────────────────────────────────────────────────────────
+async function initMap() {
+  const defExp = buildDefinitionExpression();
+
   const [Map, MapView, FeatureLayer] = await Promise.all([
     loadModule("esri/Map"),
     loadModule("esri/views/MapView"),
@@ -1017,7 +952,7 @@ async function initMap(definitionExpression) {
   view = new MapView({
     container: "viewDiv",
     map,
-    zoom: currentLevel === "state" ? 6 : 12,
+    zoom: 6,
     center: [-98.5, 39.5]
   });
 
@@ -1026,16 +961,16 @@ async function initMap(definitionExpression) {
   activeLayers = FEATURE_SERVICES.map(svc => new FeatureLayer({
     url: svc.url,
     title: `NFIRS ${svc.year}`,
-    definitionExpression,
+    definitionExpression: defExp,
     outFields: MAP_OUT_FIELDS,
     visible: true,
     minScale: 0,
     maxScale: 0,
-    featureReduction: currentLevel === "state" ? {
+    featureReduction: {
       type: "cluster",
       clusterRadius: "60px",
       popupTemplate: { title: "Cluster", content: "{cluster_count} incidents" }
-    } : null,
+    },
     renderer: {
       type: "simple",
       symbol: {
@@ -1056,9 +991,12 @@ async function initMap(definitionExpression) {
 
   document.getElementById("loading-overlay").classList.add("hidden");
   zoomToJurisdiction();
-  loadSummaryStats(definitionExpression);
+  loadSummaryStats(defExp);
 }
 
+// ─────────────────────────────────────────────────────────
+// ZOOM TO JURISDICTION
+// ─────────────────────────────────────────────────────────
 async function zoomToJurisdiction() {
   const layer = activeLayers.find(l => map.layers.includes(l));
   if (!layer) return;
@@ -1068,6 +1006,9 @@ async function zoomToJurisdiction() {
   } catch (e) { /* silent */ }
 }
 
+// ─────────────────────────────────────────────────────────
+// SUMMARY STATS
+// ─────────────────────────────────────────────────────────
 async function loadSummaryStats(definitionExpression) {
   ["stat-total","stat-fires","stat-ems","stat-ff-death","stat-oth-death","stat-aid-recv","stat-aid-given"]
     .forEach(id => document.getElementById(id).textContent = "…");
@@ -1112,6 +1053,11 @@ async function loadSummaryStats(definitionExpression) {
   document.getElementById("stat-aid-given").textContent = aidGiven.toLocaleString();
 }
 
+// ─────────────────────────────────────────────────────────
+// CSV EXPORT
+// Reads definitionExpression directly from the live layers
+// so the export always matches exactly what's on the map
+// ─────────────────────────────────────────────────────────
 async function exportCSV() {
   const btn    = document.getElementById("export-btn");
   const status = document.getElementById("export-status");
@@ -1122,6 +1068,7 @@ async function exportCSV() {
     return;
   }
 
+  // Read defExp from the live layer — guaranteed to match the map
   const defExp = visibleLayers[0].definitionExpression;
 
   let totalCount = 0;
@@ -1194,13 +1141,12 @@ async function exportCSV() {
       )
     ];
 
-    const stateFdid = document.getElementById("state-fdid-input")?.value.trim();
-    const suffix    = currentFdid ? `_${currentFdid}` : (stateFdid ? `_${stateFdid}` : "");
-    const blob = new Blob([csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    a.href     = url;
-    a.download = `NFIRS_${currentStateAbbr}${suffix}_export.csv`;
+    const suffix = currentSidebarFdid ? `_${currentSidebarFdid}` : "";
+    const blob   = new Blob([csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url    = URL.createObjectURL(blob);
+    const a      = document.createElement("a");
+    a.href       = url;
+    a.download   = `NFIRS_${currentStateAbbr}${suffix}_export.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1217,31 +1163,32 @@ async function exportCSV() {
   btn.textContent = "↓ Export to CSV";
 }
 
+// ─────────────────────────────────────────────────────────
+// RESET
+// ─────────────────────────────────────────────────────────
 function resetToGate() {
   document.getElementById("gate").classList.remove("hidden");
   document.getElementById("app").classList.remove("visible");
   document.getElementById("type-dropdown").classList.remove("open");
+  document.getElementById("state-fdid-input").value = "";
+  currentSidebarFdid = "";
   history.replaceState({}, "", window.location.pathname);
 }
 
+// ─────────────────────────────────────────────────────────
+// RESTORE FROM URL
+// ─────────────────────────────────────────────────────────
 (function restoreFromUrl() {
   const p = new URLSearchParams(window.location.search);
   if (!p.get("state")) return;
   document.getElementById("state-select").value = p.get("state");
-  if (p.get("level") === "dept") {
-    setLevel("dept");
-    onStateChange().then(() => {
-      if (p.get("fdid")) document.getElementById("dept-select").value = p.get("fdid");
-      updateGoBtn();
-      if (!document.getElementById("go-btn").disabled) launchApp();
-    });
-  } else {
-    setLevel("state");
-    updateGoBtn();
-    launchApp();
-  }
+  updateGoBtn();
+  if (!document.getElementById("go-btn").disabled) launchApp();
 })();
 
+// ─────────────────────────────────────────────────────────
+// MODULE LOADER
+// ─────────────────────────────────────────────────────────
 function loadModule(moduleName) {
   return new Promise((resolve, reject) => require([moduleName], resolve, reject));
 }
