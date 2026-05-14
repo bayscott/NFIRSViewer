@@ -1063,12 +1063,8 @@ async function exportCSV() {
   const status = document.getElementById("export-status");
 
   const visibleLayers = activeLayers.filter(l => map.layers.includes(l));
-  if (!visibleLayers.length) {
-    status.textContent = "No active layers to export.";
-    return;
-  }
+  if (!visibleLayers.length) { status.textContent = "No active layers to export."; return; }
 
-  // Read defExp from the live layer — guaranteed to match the map
   const defExp = visibleLayers[0].definitionExpression;
 
   let totalCount = 0;
@@ -1078,8 +1074,7 @@ async function exportCSV() {
 
   if (totalCount > 100000) {
     const ok = confirm(
-      `This export contains ${totalCount.toLocaleString()} records.\n\n` +
-      `Large exports may take several minutes. Consider narrowing your filters first.\n\nContinue?`
+      `This export contains ${totalCount.toLocaleString()} records.\n\nLarge exports may take several minutes. Continue?`
     );
     if (!ok) return;
   }
@@ -1087,6 +1082,13 @@ async function exportCSV() {
   btn.disabled = true;
   btn.textContent = "Exporting…";
   status.textContent = "Fetching records…";
+
+  // Split fields into chunks of 15 to avoid AGO dropping the WHERE clause
+  const CHUNK_SIZE = 15;
+  const fieldChunks = [];
+  for (let i = 0; i < EXPORT_FIELDS.length; i += CHUNK_SIZE) {
+    fieldChunks.push(EXPORT_FIELDS.slice(i, i + CHUNK_SIZE));
+  }
 
   try {
     const allRows = [];
@@ -1100,26 +1102,45 @@ async function exportCSV() {
       while (true) {
         status.textContent = `Fetching ${layer.title}… (${fetched.toLocaleString()} records)`;
 
-        const result = await layer.queryFeatures({
+        // First chunk always includes OBJECTID as the join key
+        const firstChunk = await layer.queryFeatures({
           where: defExp,
-          outFields: EXPORT_FIELDS,
+          outFields: ["OBJECTID", ...fieldChunks[0]],
           returnGeometry: false,
           resultOffset: offset,
           resultRecordCount: pageSize,
           orderByFields: ["OBJECTID ASC"]
         });
 
-        if (!result.features.length) break;
+        if (!firstChunk.features.length) break;
 
-        result.features.forEach(f => {
-          const row = { YEAR: layerYear };
-          EXPORT_FIELDS.forEach(field => { row[field] = f.attributes[field] ?? ""; });
-          allRows.push(row);
+        // Build row map keyed by OBJECTID
+        const rowMap = {};
+        firstChunk.features.forEach(f => {
+          rowMap[f.attributes.OBJECTID] = { YEAR: layerYear, ...f.attributes };
         });
 
-        fetched += result.features.length;
+        const objectIds = firstChunk.features.map(f => f.attributes.OBJECTID);
+
+        // Fetch remaining field chunks using OBJECTID IN (...) 
+        for (let c = 1; c < fieldChunks.length; c++) {
+          const chunkResult = await layer.queryFeatures({
+            where: `OBJECTID IN (${objectIds.join(",")})`,
+            outFields: ["OBJECTID", ...fieldChunks[c]],
+            returnGeometry: false
+          });
+          chunkResult.features.forEach(f => {
+            if (rowMap[f.attributes.OBJECTID]) {
+              Object.assign(rowMap[f.attributes.OBJECTID], f.attributes);
+            }
+          });
+        }
+
+        Object.values(rowMap).forEach(row => allRows.push(row));
+
+        fetched += firstChunk.features.length;
         offset  += pageSize;
-        if (result.features.length < pageSize) break;
+        if (firstChunk.features.length < pageSize) break;
       }
     }
 
