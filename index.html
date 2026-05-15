@@ -533,7 +533,7 @@
     </div>
 
     <button id="go-btn" disabled onclick="launchApp()">View incidents</button>
-    <p class="gate-note">This data is sourced from the NFIRS Public Data Release (PDR) Lite.</p>
+    <p class="gate-note">This data is sourced from the NFIRS Public Data Release (PDR) Lite 2020-2024.</p>
   </div>
 </div>
 
@@ -562,7 +562,7 @@
     <div id="viewDiv">
       <div id="loading-overlay">
         <div class="spinner"></div>
-        Loading incident data…
+        Loading Incident Data
       </div>
     </div>
 
@@ -651,7 +651,7 @@ let activeLayers       = [];
 let activeYears        = new Set([2024]);
 let activeTypes        = new Set(INC_TYPES.map(t => t.code));
 let currentStateAbbr   = "";
-let currentSidebarFdid = "";  // FDID entered in sidebar after load
+let currentSidebarFdid = ""; 
 
 const STATES = [
   ["AL","Alabama"],["AK","Alaska"],["AZ","Arizona"],["AR","Arkansas"],
