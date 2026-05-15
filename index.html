@@ -598,9 +598,6 @@
 
 <script>
 
-// ─────────────────────────────────────────────────────────
-// CONFIG
-// ─────────────────────────────────────────────────────────
 const FEATURE_SERVICES = [
   { year: 2020, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_Service_2020/FeatureServer/0" },
   { year: 2021, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_2021/FeatureServer/0" },
@@ -641,9 +638,6 @@ const EXPORT_FIELDS = [
   "EQ_INV_IGN", "MOB_PROP", "ACRES_BURN_WF", "Status", "Score", "Match_Addr", "Addr_type"
 ];
 
-// ─────────────────────────────────────────────────────────
-// APP STATE
-// ─────────────────────────────────────────────────────────
 let map, view;
 let activeLayers       = [];
 let activeYears        = new Set([2024]);
@@ -667,9 +661,6 @@ const STATES = [
   ["WI","Wisconsin"],["WY","Wyoming"]
 ];
 
-// ─────────────────────────────────────────────────────────
-// GATE CONTROLS
-// ─────────────────────────────────────────────────────────
 (function buildGateControls() {
   const sel = document.getElementById("state-select");
   STATES.forEach(([abbr, name]) => {
@@ -768,9 +759,6 @@ function updateGoBtn() {
   document.getElementById("go-btn").disabled = !ready;
 }
 
-// ─────────────────────────────────────────────────────────
-// TYPE DROPDOWN (topbar)
-// ─────────────────────────────────────────────────────────
 function buildTypeDropdown() {
   const container = document.getElementById("type-dropdown-items");
   container.innerHTML = "";
@@ -829,10 +817,6 @@ document.addEventListener("click", e => {
   }
 });
 
-// ─────────────────────────────────────────────────────────
-// FILTER BUILDER
-// Single source of truth — all filters combined here
-// ─────────────────────────────────────────────────────────
 function buildTypeClause() {
   if (activeTypes.size === INC_TYPES.length) return null;
   const clauses = [...activeTypes].map(code => `${FIELD_INC_TYPE} LIKE '${code}%'`);
@@ -847,9 +831,6 @@ function buildDefinitionExpression() {
   return parts.join(" AND ");
 }
 
-// ─────────────────────────────────────────────────────────
-// LAUNCH
-// ─────────────────────────────────────────────────────────
 async function launchApp() {
   const selectedOpt  = document.getElementById("state-select").selectedOptions[0];
   currentStateAbbr   = selectedOpt?.value || "";
@@ -865,11 +846,9 @@ async function launchApp() {
   await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
   document.getElementById("jurisdiction-badge").textContent = stateName;
-
-  // Wire up FDID Apply button
+  
   document.getElementById("fdid-apply-btn").onclick = () => {
     currentSidebarFdid = document.getElementById("state-fdid-input").value.trim();
-    // Update badge to reflect FDID filter if set
     document.getElementById("jurisdiction-badge").textContent =
       currentSidebarFdid ? `${stateName} · FDID ${currentSidebarFdid}` : stateName;
     applyFilters();
@@ -884,10 +863,6 @@ async function launchApp() {
     applyFilters();
   }
 }
-
-// ─────────────────────────────────────────────────────────
-// TOPBAR YEAR CHIPS
-// ─────────────────────────────────────────────────────────
 function buildTopbarYearChips() {
   const container = document.getElementById("topbar-year-toggles");
   container.innerHTML = "";
@@ -904,9 +879,6 @@ function buildTopbarYearChips() {
   });
 }
 
-// ─────────────────────────────────────────────────────────
-// APPLY FILTERS
-// ─────────────────────────────────────────────────────────
 function applyFilters() {
   const defExp = buildDefinitionExpression();
   document.getElementById("loading-overlay").classList.remove("hidden");
@@ -935,9 +907,6 @@ function applyFilters() {
   loadSummaryStats(defExp);
 }
 
-// ─────────────────────────────────────────────────────────
-// MAP INITIALIZATION
-// ─────────────────────────────────────────────────────────
 async function initMap() {
   const defExp = buildDefinitionExpression();
 
@@ -994,9 +963,6 @@ async function initMap() {
   loadSummaryStats(defExp);
 }
 
-// ─────────────────────────────────────────────────────────
-// ZOOM TO JURISDICTION
-// ─────────────────────────────────────────────────────────
 async function zoomToJurisdiction() {
   const layer = activeLayers.find(l => map.layers.includes(l));
   if (!layer) return;
@@ -1006,9 +972,6 @@ async function zoomToJurisdiction() {
   } catch (e) { /* silent */ }
 }
 
-// ─────────────────────────────────────────────────────────
-// SUMMARY STATS
-// ─────────────────────────────────────────────────────────
 async function loadSummaryStats(definitionExpression) {
   ["stat-total","stat-fires","stat-ems","stat-ff-death","stat-oth-death","stat-aid-recv","stat-aid-given"]
     .forEach(id => document.getElementById(id).textContent = "…");
@@ -1052,29 +1015,33 @@ async function loadSummaryStats(definitionExpression) {
   document.getElementById("stat-aid-recv").textContent  = aidRecv.toLocaleString();
   document.getElementById("stat-aid-given").textContent = aidGiven.toLocaleString();
 }
+const FIELD_CHUNKS = [];
+const CHUNK_SIZE = 20;
+for (let i = 0; i < EXPORT_FIELDS.length; i += CHUNK_SIZE) {
+  FIELD_CHUNKS.push(EXPORT_FIELDS.slice(i, i + CHUNK_SIZE));
+}
 
-// ─────────────────────────────────────────────────────────
-// CSV EXPORT
-// Reads definitionExpression directly from the live layers
-// so the export always matches exactly what's on the map
-// ─────────────────────────────────────────────────────────
 async function exportCSV() {
   const btn    = document.getElementById("export-btn");
   const status = document.getElementById("export-status");
 
   const visibleLayers = activeLayers.filter(l => map.layers.includes(l));
-  if (!visibleLayers.length) { status.textContent = "No active layers to export."; return; }
+  if (!visibleLayers.length) {
+    status.textContent = "No active layers to export.";
+    return;
+  }
 
   const defExp = visibleLayers[0].definitionExpression;
 
-  let totalCount = 0;
-  for (const layer of visibleLayers) {
-    totalCount += await layer.queryFeatureCount({ where: defExp });
-  }
+  const counts = await Promise.all(
+    visibleLayers.map(l => l.queryFeatureCount({ where: defExp }))
+  );
+  const totalCount = counts.reduce((a, b) => a + b, 0);
 
   if (totalCount > 100000) {
     const ok = confirm(
-      `This export contains ${totalCount.toLocaleString()} records.\n\nLarge exports may take several minutes. Continue?`
+      `This export contains ${totalCount.toLocaleString()} records.\n\n` +
+      `Large exports may take several minutes. Consider narrowing your filters first.\n\nContinue?`
     );
     if (!ok) return;
   }
@@ -1095,26 +1062,34 @@ async function exportCSV() {
       while (true) {
         status.textContent = `Fetching ${layer.title}… (${fetched.toLocaleString()} records)`;
 
-        const result = await layer.queryFeatures({
-          where: defExp,
-          outFields: EXPORT_FIELDS,
-          returnGeometry: false,
-          resultOffset: offset,
-          resultRecordCount: pageSize,
-          orderByFields: ["OBJECTID ASC"]
-        });
+        const chunkResults = await Promise.all(
+          FIELD_CHUNKS.map((chunk, i) => layer.queryFeatures({
+            where: defExp,
+            outFields: i === 0 ? ["OBJECTID", ...chunk] : ["OBJECTID", ...chunk],
+            returnGeometry: false,
+            resultOffset: offset,
+            resultRecordCount: pageSize,
+            orderByFields: ["OBJECTID ASC"]
+          }))
+        );
 
-        if (!result.features.length) break;
+        const firstChunk = chunkResults[0];
+        if (!firstChunk.features.length) break;
 
-        result.features.forEach(f => {
+        firstChunk.features.forEach((f, idx) => {
           const row = { YEAR: layerYear };
-          EXPORT_FIELDS.forEach(field => { row[field] = f.attributes[field] ?? ""; });
+          chunkResults.forEach(cr => {
+            const attrs = cr.features[idx]?.attributes || {};
+            EXPORT_FIELDS.forEach(field => {
+              if (field in attrs) row[field] = attrs[field] ?? "";
+            });
+          });
           allRows.push(row);
         });
 
-        fetched += result.features.length;
+        fetched += firstChunk.features.length;
         offset  += pageSize;
-        if (result.features.length < pageSize) break;
+        if (firstChunk.features.length < pageSize) break;
       }
     }
 
@@ -1157,9 +1132,7 @@ async function exportCSV() {
   btn.disabled = false;
   btn.textContent = "↓ Export to CSV";
 }
-// ─────────────────────────────────────────────────────────
-// RESET
-// ─────────────────────────────────────────────────────────
+
 function resetToGate() {
   document.getElementById("gate").classList.remove("hidden");
   document.getElementById("app").classList.remove("visible");
@@ -1169,9 +1142,6 @@ function resetToGate() {
   history.replaceState({}, "", window.location.pathname);
 }
 
-// ─────────────────────────────────────────────────────────
-// RESTORE FROM URL
-// ─────────────────────────────────────────────────────────
 (function restoreFromUrl() {
   const p = new URLSearchParams(window.location.search);
   if (!p.get("state")) return;
@@ -1180,13 +1150,9 @@ function resetToGate() {
   if (!document.getElementById("go-btn").disabled) launchApp();
 })();
 
-// ─────────────────────────────────────────────────────────
-// MODULE LOADER
-// ─────────────────────────────────────────────────────────
 function loadModule(moduleName) {
   return new Promise((resolve, reject) => require([moduleName], resolve, reject));
 }
-
 </script>
 </body>
 </html>
