@@ -13,7 +13,7 @@
 
     body {
       font-family: "Helvetica Neue", Arial, sans-serif;
-      background: #f4f5f7;
+      background: #f0f2f5;
       color: #333F48;
     }
 
@@ -24,7 +24,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #FFFFFF;
+      background: #f0f2f5;
       z-index: 9999;
       transition: opacity 0.4s ease;
       overflow-y: auto;
@@ -35,68 +35,113 @@
 
     .gate-card {
       background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
-      padding: 40px 48px;
+      border-radius: 16px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.10);
+      padding: 48px 52px;
       width: 100%;
-      max-width: 680px;
+      max-width: 700px;
     }
 
-    .gate-card h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
-
-    .gate-card > p {
-      font-size: 14px;
-      color: #666;
-      margin-bottom: 28px;
-      line-height: 1.5;
+    /* Title area */
+    .gate-title-block {
+      text-align: center;
+      margin-bottom: 36px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid #eee;
     }
 
-    .field-group { margin-bottom: 16px; }
-
-    .field-group label {
-      display: block;
-      font-size: 12px;
-      font-weight: 600;
+    .gate-title-eyebrow {
+      font-size: 11px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: #888;
-      margin-bottom: 6px;
+      letter-spacing: 0.12em;
+      color: #BF5700;
+      margin-bottom: 10px;
     }
 
-    .field-group select,
-    .field-group input {
+    .gate-title-block h1 {
+      font-size: 30px;
+      font-weight: 700;
+      color: #333F48;
+      letter-spacing: -0.5px;
+      line-height: 1.15;
+      margin-bottom: 10px;
+    }
+
+    .gate-title-block h1 span {
+      color: #BF5700;
+    }
+
+    .gate-title-block p {
+      font-size: 14px;
+      color: #888;
+      line-height: 1.6;
+      max-width: 420px;
+      margin: 0 auto;
+    }
+
+    /* Filter sections */
+    .gate-section {
+      margin-bottom: 28px;
+    }
+
+    .gate-section-label {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #333F48;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .gate-section-label .select-links {
+      display: flex;
+      gap: 10px;
+    }
+
+    .gate-section-label .select-links button {
+      background: none;
+      border: none;
+      font-size: 11px;
+      color: #BF5700;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: underline;
+      font-weight: 400;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .field-group { margin-bottom: 0; }
+
+    .field-group select {
       width: 100%;
-      padding: 10px 12px;
+      padding: 11px 14px;
       border: 1.5px solid #d0d0d0;
-      border-radius: 8px;
+      border-radius: 10px;
       font-size: 14px;
       color: #333F48;
       background: #fff;
       appearance: none;
       transition: border-color 0.15s;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
     }
 
-    .field-group select:focus,
-    .field-group input:focus {
+    .field-group select:focus {
       outline: none;
       border-color: #BF5700;
-    }
-
-    .gate-section-label {
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: #888;
-      margin-bottom: 8px;
-      display: block;
     }
 
     .check-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 6px;
-      margin-bottom: 16px;
+      gap: 7px;
     }
 
     .check-grid.years-grid {
@@ -106,13 +151,13 @@
     .check-item {
       display: flex;
       align-items: center;
-      gap: 7px;
-      padding: 7px 10px;
+      gap: 9px;
+      padding: 8px 12px;
       border: 1.5px solid #d0d0d0;
       border-radius: 8px;
       cursor: pointer;
       font-size: 13px;
-      color: #333F48;
+      color: #555;
       transition: all 0.15s;
       user-select: none;
     }
@@ -121,15 +166,15 @@
 
     .check-item.checked {
       border-color: #BF5700;
-      background: #f7f7f7;
+      background: #fff8f5;
       color: #333F48;
     }
 
     .check-item .check-box {
-      width: 14px;
-      height: 14px;
-      border: 1.5px solid #d0d0d0;
-      border-radius: 3px;
+      width: 15px;
+      height: 15px;
+      border: 1.5px solid #ccc;
+      border-radius: 4px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -152,45 +197,29 @@
       display: block;
     }
 
-    .select-all-row {
-      display: flex;
-      justify-content: flex-end;
-      gap: 12px;
-      margin-bottom: 6px;
-    }
-
-    .select-all-row button {
-      background: none;
-      border: none;
-      font-size: 12px;
-      color: #BF5700;
-      cursor: pointer;
-      padding: 0;
-      text-decoration: underline;
-    }
-
     #go-btn {
       width: 100%;
-      padding: 13px;
+      padding: 14px;
       background: #BF5700;
       color: #fff;
       border: none;
-      border-radius: 8px;
+      border-radius: 10px;
       font-size: 15px;
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
       margin-top: 8px;
       transition: background 0.15s;
+      letter-spacing: 0.02em;
     }
 
     #go-btn:hover { background: #a34a00; }
-    #go-btn:disabled { background: #d4a97a; cursor: not-allowed; }
+    #go-btn:disabled { background: #ddb090; cursor: not-allowed; }
 
     .gate-note {
-      font-size: 12px;
-      color: #aaa;
+      font-size: 11px;
+      color: #bbb;
       text-align: center;
-      margin-top: 16px;
+      margin-top: 14px;
       line-height: 1.5;
     }
 
@@ -204,21 +233,21 @@
       color: #fff;
       display: flex;
       align-items: center;
-      padding: 0 20px;
-      gap: 12px;
+      padding: 0 16px;
+      gap: 10px;
       flex-shrink: 0;
       overflow: visible;
       position: relative;
       z-index: 500;
     }
 
-    #topbar h2 { font-size: 15px; font-weight: 600; white-space: nowrap; }
+    #topbar h2 { font-size: 14px; font-weight: 700; white-space: nowrap; }
 
     #jurisdiction-badge {
       background: rgba(255,255,255,0.12);
       border-radius: 20px;
-      padding: 3px 12px;
-      font-size: 12px;
+      padding: 3px 10px;
+      font-size: 11px;
       color: #cde;
       white-space: nowrap;
     }
@@ -232,13 +261,13 @@
 
     #topbar-year-toggles {
       display: flex;
-      gap: 4px;
+      gap: 3px;
       align-items: center;
       flex-shrink: 0;
     }
 
     .topbar-chip {
-      padding: 3px 9px;
+      padding: 3px 8px;
       border-radius: 20px;
       border: 1px solid rgba(255,255,255,0.25);
       font-size: 11px;
@@ -255,13 +284,14 @@
       color: #fff;
     }
 
+    /* Type dropdown */
     #type-filter-wrapper {
       position: relative;
       flex-shrink: 0;
     }
 
     #type-filter-btn {
-      padding: 4px 10px;
+      padding: 4px 9px;
       border-radius: 6px;
       border: 1px solid rgba(255,255,255,0.25);
       font-size: 11px;
@@ -328,14 +358,45 @@
       flex-shrink: 0;
     }
 
+    /* FDID in topbar */
+    #topbar-fdid-input {
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      font-size: 11px;
+      width: 110px;
+    }
+
+    #topbar-fdid-input::placeholder { color: rgba(255,255,255,0.4); }
+    #topbar-fdid-input:focus { outline: none; border-color: #BF5700; }
+
+    .topbar-action-btn {
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.25);
+      font-size: 11px;
+      cursor: pointer;
+      background: transparent;
+      color: rgba(255,255,255,0.8);
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+
+    .topbar-action-btn:hover { background: rgba(255,255,255,0.1); }
+    .topbar-action-btn.accent { background: #BF5700; border-color: #BF5700; color: #fff; }
+    .topbar-action-btn.accent:hover { background: #a34a00; }
+    .topbar-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
     #change-btn {
       margin-left: auto;
       background: none;
       border: 1px solid rgba(255,255,255,0.3);
       color: #cde;
       border-radius: 6px;
-      padding: 4px 12px;
-      font-size: 12px;
+      padding: 4px 10px;
+      font-size: 11px;
       cursor: pointer;
       white-space: nowrap;
       flex-shrink: 0;
@@ -346,6 +407,7 @@
     #main { display: flex; flex: 1; overflow: hidden; }
     #viewDiv { flex: 1; position: relative; }
 
+    /* Sidebar */
     #sidebar {
       width: 300px;
       background: #fff;
@@ -356,28 +418,28 @@
     }
 
     .sidebar-header {
-      padding: 16px 20px;
+      padding: 14px 18px;
       border-bottom: 1px solid #eee;
-      font-size: 13px;
-      font-weight: 600;
-      color: #555;
+      font-size: 12px;
+      font-weight: 700;
+      color: #333F48;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.05em;
     }
 
     #stats-panel {
-      padding: 16px 20px;
-      flex: 1;
+      padding: 14px 18px;
       overflow-y: auto;
+      flex-shrink: 0;
     }
 
     .stat-section {
-      font-size: 11px;
-      font-weight: 600;
+      font-size: 10px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
       color: #BF5700;
-      padding: 12px 0 4px;
+      padding: 10px 0 3px;
     }
 
     .stat-section:first-child { padding-top: 0; }
@@ -385,94 +447,64 @@
     .stat-row {
       display: flex;
       justify-content: space-between;
-      padding: 8px 0;
+      padding: 7px 0;
       border-bottom: 1px solid #f0f0f0;
-      font-size: 13px;
+      font-size: 12px;
     }
 
-    .stat-row .label { color: #666; }
-    .stat-row .value { font-weight: 600; color: #333F48; }
+    .stat-row .label { color: #777; }
+    .stat-row .value { font-weight: 700; color: #333F48; }
 
-    #fdid-filter-section {
+    /* Bar chart */
+    #chart-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
       border-top: 1px solid #eee;
-      flex-shrink: 0;
     }
 
-    #fdid-filter-inner {
-      padding: 12px 20px;
+    #chart-inner {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 18px;
     }
 
-    #fdid-filter-inner input {
-      width: 100%;
-      padding: 8px 10px;
-      border: 1.5px solid #d0d0d0;
-      border-radius: 8px;
-      font-size: 13px;
+    .chart-row {
+      margin-bottom: 10px;
+    }
+
+    .chart-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #555;
+      margin-bottom: 3px;
+    }
+
+    .chart-label .chart-count {
+      font-weight: 700;
       color: #333F48;
-      transition: border-color 0.15s;
     }
 
-    #fdid-filter-inner input:focus {
-      outline: none;
-      border-color: #BF5700;
+    .chart-bar-bg {
+      height: 8px;
+      background: #f0f0f0;
+      border-radius: 4px;
+      overflow: hidden;
     }
 
-    #fdid-filter-inner p {
-      font-size: 11px;
-      color: #aaa;
-      margin-top: 4px;
-    }
-
-    #fdid-apply-btn {
-      margin-top: 8px;
-      width: 100%;
-      padding: 8px;
+    .chart-bar-fill {
+      height: 100%;
       background: #BF5700;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-
-    #fdid-apply-btn:hover { background: #a34a00; }
-
-    #export-section {
-      padding: 16px 20px;
-      border-top: 1px solid #eee;
-      flex-shrink: 0;
-    }
-
-    #export-btn {
-      width: 100%;
-      padding: 10px;
-      background: #333F48;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-
-    #export-btn:hover { background: #4a5568; }
-    #export-btn:disabled { background: #aaa; cursor: not-allowed; }
-
-    #export-status {
-      font-size: 11px;
-      color: #888;
-      text-align: center;
-      margin-top: 6px;
-      min-height: 16px;
+      border-radius: 4px;
+      transition: width 0.4s ease;
     }
 
     #loading-overlay {
       position: absolute;
       inset: 0;
-      background: rgba(255,255,255,0.75);
+      background: rgba(255,255,255,0.8);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -495,6 +527,16 @@
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    #export-status-bar {
+      font-size: 11px;
+      color: #888;
+      padding: 4px 16px;
+      min-height: 20px;
+      flex-shrink: 0;
+      border-top: 1px solid #eee;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -502,38 +544,46 @@
 <!-- ── GATE ─────────────────────────────────────────────── -->
 <div id="gate">
   <div class="gate-card">
-    <div style="text-align: center;">
-    <h1>NFIRS Incident Viewer</h1>
-    <p>Select your state, years, and incidents types.</p>
-    </div>  
 
-    <div class="field-group">
-      <label>State</label>
-      <select id="state-select">
-        <option value="">— Select State —</option>
-      </select>
+    <div class="gate-title-block">
+      <div class="gate-title-eyebrow">National Fire Incident Reporting System</div>
+      <h1>NFIRS <span>Incident</span> Viewer</h1>
+      <p>Select your state and filters below. No data loads until you confirm.</p>
     </div>
 
-    <div class="field-group">
-      <span class="gate-section-label">Years</span>
-      <div class="select-all-row">
-        <button onclick="selectAllYears()">All</button>
-        <button onclick="clearAllYears()">None</button>
+    <div class="gate-section">
+      <div class="gate-section-label">State</div>
+      <div class="field-group">
+        <select id="state-select">
+          <option value="">— Select State —</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="gate-section">
+      <div class="gate-section-label">
+        Years
+        <div class="select-links">
+          <button onclick="selectAllYears()">All</button>
+          <button onclick="clearAllYears()">None</button>
+        </div>
       </div>
       <div class="check-grid years-grid" id="gate-year-checks"></div>
     </div>
 
-    <div class="field-group">
-      <span class="gate-section-label">Incident types</span>
-      <div class="select-all-row">
-        <button onclick="selectAllTypes()">All</button>
-        <button onclick="clearAllTypes()">None</button>
+    <div class="gate-section">
+      <div class="gate-section-label">
+        Incident Types
+        <div class="select-links">
+          <button onclick="selectAllTypes()">All</button>
+          <button onclick="clearAllTypes()">None</button>
+        </div>
       </div>
       <div class="check-grid" id="gate-type-checks"></div>
     </div>
 
-    <button id="go-btn" disabled onclick="launchApp()">View incidents</button>
-    <p class="gate-note">This data is sourced from the NFIRS Public Data Release (PDR) Lite 2020-2024.</p>
+    <button id="go-btn" disabled onclick="launchApp()">View Incidents</button>
+    <p class="gate-note">NFIRS Public Data Release (PDR) Lite · 2020–2024</p>
   </div>
 </div>
 
@@ -555,14 +605,21 @@
         <div id="type-dropdown-items"></div>
       </div>
     </div>
-    <button id="change-btn" onclick="resetToGate()">Change state</button>
+    <div class="topbar-divider"></div>
+    <!-- FDID filter -->
+    <input id="topbar-fdid-input" type="text" placeholder="Filter by FDID…" autocomplete="off" />
+    <button class="topbar-action-btn accent" id="fdid-apply-btn">Apply</button>
+    <div class="topbar-divider"></div>
+    <!-- Export -->
+    <button class="topbar-action-btn" id="export-btn" onclick="exportCSV()">↓ Export CSV</button>
+    <button id="change-btn" onclick="resetToGate()">Change State</button>
   </div>
 
   <div id="main">
     <div id="viewDiv">
       <div id="loading-overlay">
         <div class="spinner"></div>
-        Loading Incident Data
+        Loading incident data…
       </div>
     </div>
 
@@ -571,8 +628,6 @@
       <div id="stats-panel">
         <div class="stat-section">Incidents</div>
         <div class="stat-row"><span class="label">Total Incidents</span><span class="value" id="stat-total">—</span></div>
-        <div class="stat-row"><span class="label">Total Fires</span><span class="value" id="stat-fires">—</span></div>
-        <div class="stat-row"><span class="label">Total EMS</span><span class="value" id="stat-ems">—</span></div>
         <div class="stat-section">Casualties</div>
         <div class="stat-row"><span class="label">Firefighter Deaths</span><span class="value" id="stat-ff-death">—</span></div>
         <div class="stat-row"><span class="label">Civilian Deaths</span><span class="value" id="stat-oth-death">—</span></div>
@@ -581,19 +636,14 @@
         <div class="stat-row"><span class="label">Aid Given</span><span class="value" id="stat-aid-given">—</span></div>
       </div>
 
-      <div id="fdid-filter-section">
-        <div class="sidebar-header">Filter by Department</div>
-        <div id="fdid-filter-inner">
-          <input id="state-fdid-input" type="text" placeholder="Enter FDID…" autocomplete="off" />
-          <p>Leave blank to view all departments</p>
-          <button id="fdid-apply-btn">Apply</button>
+      <div id="chart-section">
+        <div class="sidebar-header">Incidents by Type</div>
+        <div id="chart-inner">
+          <!-- bars injected here -->
         </div>
       </div>
 
-      <div id="export-section">
-        <button id="export-btn" onclick="exportCSV()">&#8595; Export to CSV</button>
-        <div id="export-status"></div>
-      </div>
+      <div id="export-status-bar"></div>
     </div>
   </div>
 </div>
@@ -651,7 +701,7 @@ let activeLayers       = [];
 let activeYears        = new Set([2024]);
 let activeTypes        = new Set(INC_TYPES.map(t => t.code));
 let currentStateAbbr   = "";
-let currentSidebarFdid = ""; 
+let currentSidebarFdid = "";
 
 const STATES = [
   ["AL","Alabama"],["AK","Alaska"],["AZ","Arizona"],["AR","Arkansas"],
@@ -771,7 +821,7 @@ function updateGoBtn() {
 }
 
 // ─────────────────────────────────────────────────────────
-// TYPE DROPDOWN (topbar)
+// TYPE DROPDOWN
 // ─────────────────────────────────────────────────────────
 function buildTypeDropdown() {
   const container = document.getElementById("type-dropdown-items");
@@ -833,7 +883,6 @@ document.addEventListener("click", e => {
 
 // ─────────────────────────────────────────────────────────
 // FILTER BUILDER
-// Single source of truth — all filters combined here
 // ─────────────────────────────────────────────────────────
 function buildTypeClause() {
   if (activeTypes.size === INC_TYPES.length) return null;
@@ -856,7 +905,7 @@ async function launchApp() {
   const selectedOpt  = document.getElementById("state-select").selectedOptions[0];
   currentStateAbbr   = selectedOpt?.value || "";
   const stateName    = selectedOpt?.textContent || currentStateAbbr;
-  currentSidebarFdid = "";  // reset on each launch
+  currentSidebarFdid = "";
 
   const params = new URLSearchParams({ state: currentStateAbbr });
   history.replaceState({}, "", "?" + params.toString());
@@ -868,13 +917,17 @@ async function launchApp() {
 
   document.getElementById("jurisdiction-badge").textContent = stateName;
 
-  // Wire up FDID Apply button
+  // Wire FDID apply button
   document.getElementById("fdid-apply-btn").onclick = () => {
-    currentSidebarFdid = document.getElementById("state-fdid-input").value.trim();
-    // Update badge to reflect FDID filter if set
+    currentSidebarFdid = document.getElementById("topbar-fdid-input").value.trim();
     document.getElementById("jurisdiction-badge").textContent =
       currentSidebarFdid ? `${stateName} · FDID ${currentSidebarFdid}` : stateName;
     applyFilters();
+  };
+
+  // Also apply on Enter key in FDID input
+  document.getElementById("topbar-fdid-input").onkeydown = e => {
+    if (e.key === "Enter") document.getElementById("fdid-apply-btn").click();
   };
 
   buildTopbarYearChips();
@@ -1009,86 +1062,121 @@ async function zoomToJurisdiction() {
 }
 
 // ─────────────────────────────────────────────────────────
-// SUMMARY STATS
+// SUMMARY STATS + BAR CHART
 // ─────────────────────────────────────────────────────────
 async function loadSummaryStats(definitionExpression) {
-  ["stat-total","stat-fires","stat-ems","stat-ff-death","stat-oth-death","stat-aid-recv","stat-aid-given"]
+  ["stat-total","stat-ff-death","stat-oth-death","stat-aid-recv","stat-aid-given"]
     .forEach(id => document.getElementById(id).textContent = "…");
 
-  let total = 0, fires = 0, ems = 0, ffDeath = 0, othDeath = 0, aidRecv = 0, aidGiven = 0;
+  document.getElementById("chart-inner").innerHTML =
+    `<div style="color:#aaa;font-size:12px;padding:8px 0">Loading…</div>`;
+
+  let total = 0, ffDeath = 0, othDeath = 0, aidRecv = 0, aidGiven = 0;
+
+  // Per-type counts for bar chart
+  const typeCounts = {};
+  INC_TYPES.forEach(t => { typeCounts[t.code] = 0; });
 
   const visibleLayers = activeLayers.filter(l => map.layers.includes(l));
   if (!visibleLayers.length) {
-    ["stat-total","stat-fires","stat-ems","stat-ff-death","stat-oth-death","stat-aid-recv","stat-aid-given"]
+    ["stat-total","stat-ff-death","stat-oth-death","stat-aid-recv","stat-aid-given"]
       .forEach(id => document.getElementById(id).textContent = "0");
+    document.getElementById("chart-inner").innerHTML = "";
     return;
   }
 
   const emsCodes = "3,30,300,31,311,32,320,321,322,323,324";
 
   await Promise.all(visibleLayers.map(async layer => {
-    const [countRes, firesRes, emsRes, ffRes, othRes, aidRecvRes, aidGivenRes] = await Promise.all([
+    // Summary stats + per-type counts all in parallel
+    const typeCountQueries = INC_TYPES
+      .filter(t => activeTypes.has(t.code))
+      .map(t => layer.queryFeatureCount({
+        where: `${definitionExpression} AND ${FIELD_INC_TYPE} LIKE '${t.code}%'`
+      }).then(n => ({ code: t.code, n })));
+
+    const [countRes, ffRes, othRes, aidRecvRes, aidGivenRes, ...typeResults] = await Promise.all([
       layer.queryFeatureCount({ where: definitionExpression }),
-      layer.queryFeatureCount({ where: `${definitionExpression} AND ${FIELD_INC_TYPE} LIKE '1%'` }),
-      layer.queryFeatureCount({ where: `${definitionExpression} AND ${FIELD_INC_TYPE} IN (${emsCodes})` }),
       layer.queryFeatures({ where: definitionExpression, outStatistics: [{ statisticType: "sum", onStatisticField: "FF_DEATH", outStatisticFieldName: "total" }] }),
       layer.queryFeatures({ where: definitionExpression, outStatistics: [{ statisticType: "sum", onStatisticField: "OTH_DEATH", outStatisticFieldName: "total" }] }),
       layer.queryFeatureCount({ where: `${definitionExpression} AND AID IN ('1', '2')` }),
       layer.queryFeatureCount({ where: `${definitionExpression} AND AID IN ('3', '4')` }),
+      ...typeCountQueries
     ]);
 
     total    += countRes;
-    fires    += firesRes;
-    ems      += emsRes;
     ffDeath  += (ffRes.features[0]?.attributes?.total  || 0);
     othDeath += (othRes.features[0]?.attributes?.total || 0);
     aidRecv  += aidRecvRes;
     aidGiven += aidGivenRes;
+
+    typeResults.forEach(r => {
+      typeCounts[r.code] = (typeCounts[r.code] || 0) + r.n;
+    });
   }));
 
   document.getElementById("stat-total").textContent     = total.toLocaleString();
-  document.getElementById("stat-fires").textContent     = fires.toLocaleString();
-  document.getElementById("stat-ems").textContent       = ems.toLocaleString();
   document.getElementById("stat-ff-death").textContent  = ffDeath.toLocaleString();
   document.getElementById("stat-oth-death").textContent = othDeath.toLocaleString();
   document.getElementById("stat-aid-recv").textContent  = aidRecv.toLocaleString();
   document.getElementById("stat-aid-given").textContent = aidGiven.toLocaleString();
+
+  // Render bar chart
+  renderBarChart(typeCounts, total);
+}
+
+function renderBarChart(typeCounts, grandTotal) {
+  const container = document.getElementById("chart-inner");
+  container.innerHTML = "";
+
+  const activeTypesArr = INC_TYPES.filter(t => activeTypes.has(t.code));
+  const maxCount = Math.max(...activeTypesArr.map(t => typeCounts[t.code] || 0), 1);
+
+  activeTypesArr.forEach(t => {
+    const count = typeCounts[t.code] || 0;
+    const pct   = grandTotal > 0 ? ((count / grandTotal) * 100).toFixed(1) : "0.0";
+    const barW  = maxCount > 0 ? (count / maxCount) * 100 : 0;
+
+    const row = document.createElement("div");
+    row.className = "chart-row";
+    row.innerHTML = `
+      <div class="chart-label">
+        <span>${t.code} – ${t.label}</span>
+        <span class="chart-count">${count.toLocaleString()} <span style="color:#aaa;font-weight:400">(${pct}%)</span></span>
+      </div>
+      <div class="chart-bar-bg">
+        <div class="chart-bar-fill" style="width:${barW}%"></div>
+      </div>
+    `;
+    container.appendChild(row);
+  });
 }
 
 // ─────────────────────────────────────────────────────────
-// CSV EXPORT
-// Uses direct REST fetch calls instead of the SDK to avoid
-// rate limit errors. One request per page, no chunking.
+// CSV EXPORT — direct REST fetch, respects all active filters
 // ─────────────────────────────────────────────────────────
 async function exportCSV() {
   const btn    = document.getElementById("export-btn");
-  const status = document.getElementById("export-status");
+  const status = document.getElementById("export-status-bar");
 
   const visibleLayers = activeLayers.filter(l => map.layers.includes(l));
-  if (!visibleLayers.length) {
-    status.textContent = "No active layers to export.";
-    return;
-  }
+  if (!visibleLayers.length) { status.textContent = "No active layers to export."; return; }
 
   const defExp = visibleLayers[0].definitionExpression;
 
-  // Count records using SDK (lightweight — no field payload)
-  const counts = await Promise.all(
-    visibleLayers.map(l => l.queryFeatureCount({ where: defExp }))
-  );
+  const counts = await Promise.all(visibleLayers.map(l => l.queryFeatureCount({ where: defExp })));
   const totalCount = counts.reduce((a, b) => a + b, 0);
 
   if (totalCount > 100000) {
     const ok = confirm(
-      `This export contains ${totalCount.toLocaleString()} records.\n\n` +
-      `Large exports may take several minutes. Consider narrowing your filters first.\n\nContinue?`
+      `This export contains ${totalCount.toLocaleString()} records.\n\nLarge exports may take several minutes. Continue?`
     );
     if (!ok) return;
   }
 
   btn.disabled = true;
   btn.textContent = "Exporting…";
-  status.textContent = "Fetching records…";
+  status.textContent = "Starting export…";
 
   try {
     const allRows = [];
@@ -1096,7 +1184,6 @@ async function exportCSV() {
 
     for (const layer of visibleLayers) {
       const layerYear = layer.title.replace("NFIRS ", "");
-      // Direct REST endpoint — append /0/query since layer.url ends at /FeatureServer
       const restUrl   = layer.url + "/0/query";
       let offset      = 0;
       const pageSize  = 2000;
@@ -1117,9 +1204,7 @@ async function exportCSV() {
         const response = await fetch(`${restUrl}?${params}`);
         const json     = await response.json();
 
-        if (json.error) {
-          throw new Error(`AGO error ${json.error.code}: ${json.error.message}`);
-        }
+        if (json.error) throw new Error(`AGO error ${json.error.code}: ${json.error.message}`);
 
         const features = json.features || [];
         if (!features.length) break;
@@ -1139,12 +1224,12 @@ async function exportCSV() {
     if (!allRows.length) {
       status.textContent = "No records found for current filters.";
       btn.disabled = false;
-      btn.textContent = "↓ Export to CSV";
+      btn.textContent = "↓ Export CSV";
       return;
     }
 
-    const headers = ["YEAR", ...EXPORT_FIELDS];
-    const csvLines = [
+    const headers   = ["YEAR", ...EXPORT_FIELDS];
+    const csvLines  = [
       headers.join(","),
       ...allRows.map(row =>
         headers.map(h => {
@@ -1158,10 +1243,8 @@ async function exportCSV() {
     const blob   = new Blob([csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
     const url    = URL.createObjectURL(blob);
     const a      = document.createElement("a");
-    a.href       = url;
-    a.download   = `NFIRS_${currentStateAbbr}${suffix}_export.csv`;
-    document.body.appendChild(a);
-    a.click();
+    a.href = url; a.download = `NFIRS_${currentStateAbbr}${suffix}_export.csv`;
+    document.body.appendChild(a); a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
@@ -1169,11 +1252,11 @@ async function exportCSV() {
 
   } catch (err) {
     console.error("Export error:", err);
-    status.textContent = "Export failed. Check console for details.";
+    status.textContent = `Export failed: ${err.message}`;
   }
 
   btn.disabled = false;
-  btn.textContent = "↓ Export to CSV";
+  btn.textContent = "↓ Export CSV";
 }
 
 // ─────────────────────────────────────────────────────────
@@ -1183,7 +1266,7 @@ function resetToGate() {
   document.getElementById("gate").classList.remove("hidden");
   document.getElementById("app").classList.remove("visible");
   document.getElementById("type-dropdown").classList.remove("open");
-  document.getElementById("state-fdid-input").value = "";
+  document.getElementById("topbar-fdid-input").value = "";
   currentSidebarFdid = "";
   history.replaceState({}, "", window.location.pathname);
 }
