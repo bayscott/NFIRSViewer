@@ -502,8 +502,10 @@
 <!-- ── GATE ─────────────────────────────────────────────── -->
 <div id="gate">
   <div class="gate-card">
+    <div style="text-align: center;">
     <h1>NFIRS Incident Viewer</h1>
-    <p>Select your state and filters. Data loads only after you confirm.</p>
+    <p>Select your state, years, and incidents types.</p>
+    </div>  
 
     <div class="field-group">
       <label>State</label>
@@ -531,7 +533,7 @@
     </div>
 
     <button id="go-btn" disabled onclick="launchApp()">View incidents</button>
-    <p class="gate-note">NFIRS Public Data Release 2020–2024.</p>
+    <p class="gate-note">This data is sourced from the NFIRS Public Data Release (PDR) Lite.</p>
   </div>
 </div>
 
@@ -568,15 +570,15 @@
       <div class="sidebar-header">Summary</div>
       <div id="stats-panel">
         <div class="stat-section">Incidents</div>
-        <div class="stat-row"><span class="label">Total incidents</span><span class="value" id="stat-total">—</span></div>
-        <div class="stat-row"><span class="label">Total fires</span><span class="value" id="stat-fires">—</span></div>
+        <div class="stat-row"><span class="label">Total Incidents</span><span class="value" id="stat-total">—</span></div>
+        <div class="stat-row"><span class="label">Total Fires</span><span class="value" id="stat-fires">—</span></div>
         <div class="stat-row"><span class="label">Total EMS</span><span class="value" id="stat-ems">—</span></div>
         <div class="stat-section">Casualties</div>
-        <div class="stat-row"><span class="label">Firefighter deaths</span><span class="value" id="stat-ff-death">—</span></div>
-        <div class="stat-row"><span class="label">Civilian deaths</span><span class="value" id="stat-oth-death">—</span></div>
+        <div class="stat-row"><span class="label">Firefighter Deaths</span><span class="value" id="stat-ff-death">—</span></div>
+        <div class="stat-row"><span class="label">Civilian Deaths</span><span class="value" id="stat-oth-death">—</span></div>
         <div class="stat-section">Mutual Aid</div>
-        <div class="stat-row"><span class="label">Aid received</span><span class="value" id="stat-aid-recv">—</span></div>
-        <div class="stat-row"><span class="label">Aid given</span><span class="value" id="stat-aid-given">—</span></div>
+        <div class="stat-row"><span class="label">Aid Received</span><span class="value" id="stat-aid-recv">—</span></div>
+        <div class="stat-row"><span class="label">Aid Given</span><span class="value" id="stat-aid-given">—</span></div>
       </div>
 
       <div id="fdid-filter-section">
@@ -638,7 +640,7 @@ const EXPORT_FIELDS = [
   "STRUC_TYPE", "STRUC_STAT", "BLDG_ABOVE", "TOT_SQ_FT", "FIRE_ORIG", "FIRE_SPRD",
   "DETECTOR", "DET_TYPE", "DET_OPERAT", "DET_EFFECT", "DET_FAIL", "AES_PRES",
   "AES_TYPE", "AES_OPER", "NO_SPR_OP", "AES_FAIL", "FIRE_CAUSE", "HEAT_SOURCE_WF",
-  "EQ_INV_IGN", "MOB_PROP", "ACRES_BURN_WF", "Status", "Score", "Match_Addr", "Addr_type"
+  "EQ_INV_IGN", "MOB_PROP", "ACRES_BURN_WF"
 ];
 
 // ─────────────────────────────────────────────────────────
