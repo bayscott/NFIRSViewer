@@ -510,13 +510,9 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     #export-status-bar {
-      font-size: 11px;
-      color: #888;
-      padding: 4px 16px;
-      min-height: 20px;
-      flex-shrink: 0;
-      border-top: 1px solid #eee;
-      text-align: center;
+     font-size: 11px;
+      color: rgba(255,255,255,0.6);
+      white-space: nowrap;
     }
   </style>
 </head>
@@ -594,6 +590,7 @@
     <div class="topbar-divider"></div>
     <!-- Export -->
     <button class="topbar-action-btn" id="export-btn" onclick="exportCSV()">↓ Export CSV</button>
+    <div id="export-status-bar"></div>
     <button id="change-btn" onclick="resetToGate()">Change State</button>
   </div>
 
@@ -618,8 +615,6 @@
         <div class="stat-row"><span class="label">Aid Received</span><span class="value" id="stat-aid-recv">—</span></div>
         <div class="stat-row"><span class="label">Aid Given</span><span class="value" id="stat-aid-given">—</span></div>
       </div>
-
-      <div id="export-status-bar"></div>
     </div>
   </div>
 </div>
@@ -967,7 +962,7 @@ async function initMap() {
     featureReduction: {
       type: "cluster",
       clusterRadius: "60px",
-      popupTemplate: { title: "Cluster", content: "{cluster_count} incidents" }
+      popupTemplate: { title: "Cluster of Incidents", content: "This incident cluster includes {cluster_count} incidents." }
     },
     renderer: {
       type: "simple",
