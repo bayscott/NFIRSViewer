@@ -1143,7 +1143,8 @@ async function exportCSV() {
   try {
     const domainsByLayer = {};
     await Promise.all(visibleLayers.map(async layer => {
-      domainsByLayer[layer.url] = await fetchDomains(layer.url);
+      const layerEndpoint = layer.url.endsWith("/0") ? layer.url : layer.url + "/0";
+      domainsByLayer[layer.url] = await fetchDomains(layerEndpoint);
     }));
 
     const allRows = [];
