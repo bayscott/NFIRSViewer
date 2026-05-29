@@ -1087,28 +1087,30 @@ function renderBarChart(typeCounts, grandTotal) {
 
 const DATE_FIELDS = new Set(["ALARM", "ARRIVAL", "LU_CLEAR"]);
 
-function formatUSDate(epochMs) {
-  if (epochMs == null || epochMs === "") return "";
-  const d = new Date(epochMs);
-  if (isNaN(d)) return epochMs;
-  const mo  = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const yr  = d.getFullYear();
-  const hr  = d.getHours();
-  const min = String(d.getMinutes()).padStart(2, "0");
+function formatUSDate(isoStr) {
+  if (isoStr == null || isoStr === "") return "";
+  const d = new Date(isoStr);
+  if (isNaN(d)) return isoStr;
+  const mo   = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day  = String(d.getUTCDate()).padStart(2, "0");
+  const yr   = d.getUTCFullYear();
+  const hr   = d.getUTCHours();
+  const min  = String(d.getUTCMinutes()).padStart(2, "0");
   const ampm = hr >= 12 ? "PM" : "AM";
   const hr12 = hr % 12 || 12;
   return `${mo}/${day}/${yr} ${hr12}:${min} ${ampm}`;
 }
 
-async function fetchDomains(serviceUrl) {
-  const res  = await fetch(`${serviceUrl}?f=json`);
+async function fetchDomains(layerUrl) {
+  const res  = await fetch(`${layerUrl}?f=json`);
   const json = await res.json();
   const domains = {};
   (json.fields || []).forEach(field => {
     if (field.domain?.type === "codedValue") {
       const map = {};
-      field.domain.codedValues.forEach(cv => { map[String(cv.code)] = cv.name; });
+      field.domain.codedValues.forEach(cv => {
+        map[String(cv.code)] = cv.name;
+      });
       domains[field.name] = map;
     }
   });
@@ -1164,6 +1166,7 @@ async function exportCSV() {
           resultOffset:      offset,
           resultRecordCount: pageSize,
           orderByFields:     "OBJECTID ASC",
+          returnISODates:    true,
           f:                 "json"
         });
 
