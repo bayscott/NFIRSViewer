@@ -779,6 +779,7 @@ function updateGoBtn() {
   const ready = state && activeYears.size > 0 && activeTypes.size > 0;
   document.getElementById("go-btn").disabled = !ready;
 }
+
 function buildTypeDropdown() {
   const container = document.getElementById("type-dropdown-items");
   container.innerHTML = "";
@@ -906,7 +907,6 @@ function buildTopbarYearChips() {
     container.appendChild(chip);
   });
 }
-
 function applyFilters() {
   const defExp = buildDefinitionExpression();
   document.getElementById("loading-overlay").classList.remove("hidden");
@@ -999,7 +999,6 @@ async function zoomToJurisdiction() {
     if (result?.extent) view.goTo(result.extent.expand(1.2));
   } catch (e) {}
 }
-
 async function loadSummaryStats(definitionExpression) {
   ["stat-total","stat-ff-death","stat-oth-death","stat-aid-recv","stat-aid-given"]
     .forEach(id => document.getElementById(id).textContent = "…");
@@ -1263,9 +1262,19 @@ async function exportAFG() {
   const VEH_CODES    = ["13","130","131","132","133","134","135","136","137","138"];
   const VEG_CODES    = ["14","140","141","142","143"];
 
-  const structWhere = `INC_TYPE IN (${STRUCT_CODES.map(c => `'${c}'`).join(",")})`;
-  const vehWhere    = `INC_TYPE IN (${VEH_CODES.map(c => `'${c}'`).join(",")})`;
-  const vegWhere    = `INC_TYPE IN (${VEG_CODES.map(c => `'${c}'`).join(",")})`;
+  const structWhere  = `INC_TYPE IN (${STRUCT_CODES.map(c => `'${c}'`).join(",")})`;
+  const vehWhere     = `INC_TYPE IN (${VEH_CODES.map(c => `'${c}'`).join(",")})`;
+  const vegWhere     = `INC_TYPE IN (${VEG_CODES.map(c => `'${c}'`).join(",")})`;
+
+  const mvaWhere     = `INC_TYPE IN ('322','323','324')`;
+  const extricWhere  = `INC_TYPE = '352'`;
+  const rescueCodesArr = ["300","350","351","353","354","355","356","357","358","359",
+    "360","361","362","363","364","365","366","367","368","369",
+    "370","371","372","373","374","375","376","377","378","379","380","381"];
+  const rescueWhere  = `INC_TYPE IN (${rescueCodesArr.map(c => `'${c}'`).join(",")})`;
+  const blsWhere     = `(ACT_TAK1 = '32' OR ACT_TAK2 = '32' OR ACT_TAK3 = '32')`;
+  const alsWhere     = `(ACT_TAK1 = '33' OR ACT_TAK2 = '33' OR ACT_TAK3 = '33')`;
+  const transportWhere = `(ACT_TAK1 = '34' OR ACT_TAK2 = '34' OR ACT_TAK3 = '34')`;
 
   try {
     const yearData = {};
@@ -1280,7 +1289,8 @@ async function exportAFG() {
         othDeath, othInj, ffDeathRes, ffInjRes,
         s100, s200, s300, s400, s500, s600, s700, s800, s900, total,
         structFires, vehFires, vegFires, acresBurn,
-        aid1, aid2, aid3, aid4, aidFire
+        aid1, aid2, aid3, aid4, aidFire,
+        emsMva, emsExtric, emsRescue, emsBls, emsAls, emsBlsTransport, emsAlsTransport
       ] = await Promise.all([
         layer.queryFeatures({ where: w, outStatistics: [{ statisticType: "sum", onStatisticField: "OTH_DEATH", outStatisticFieldName: "v" }] }),
         layer.queryFeatures({ where: w, outStatistics: [{ statisticType: "sum", onStatisticField: "OTH_INJ",   outStatisticFieldName: "v" }] }),
@@ -1305,6 +1315,13 @@ async function exportAFG() {
         layer.queryFeatureCount({ where: `${w} AND AID = '3'` }),
         layer.queryFeatureCount({ where: `${w} AND AID = '4'` }),
         layer.queryFeatureCount({ where: `${w} AND INC_TYPE LIKE '1%' AND AID <> 'N'` }),
+        layer.queryFeatureCount({ where: `${w} AND ${mvaWhere}` }),
+        layer.queryFeatureCount({ where: `${w} AND ${extricWhere}` }),
+        layer.queryFeatureCount({ where: `${w} AND ${rescueWhere}` }),
+        layer.queryFeatureCount({ where: `${w} AND ${blsWhere}` }),
+        layer.queryFeatureCount({ where: `${w} AND ${alsWhere}` }),
+        layer.queryFeatureCount({ where: `${w} AND ${blsWhere} AND ${transportWhere}` }),
+        layer.queryFeatureCount({ where: `${w} AND ${alsWhere} AND ${transportWhere}` }),
       ]);
 
       yearData[year] = {
@@ -1312,7 +1329,8 @@ async function exportAFG() {
         lodTotal: v(ffDeathRes) + v(ffInjRes),
         s100, s200, s300, s400, s500, s600, s700, s800, s900, total,
         structFires, vehFires, vegFires, acresBurn: v(acresBurn),
-        aid1, aid2, aid3, aid4, aidFire
+        aid1, aid2, aid3, aid4, aidFire,
+        emsMva, emsExtric, emsRescue, emsBls, emsAls, emsBlsTransport, emsAlsTransport
       };
     }
 
@@ -1346,6 +1364,14 @@ async function exportAFG() {
       { label: "Provide mutual aid",            key: "aid3" },
       { label: "Provide auto aid",              key: "aid4" },
       { label: "Aid incidents that were fires", key: "aidFire" },
+      { section: "EMS" },
+      { label: "Motor Vehicle Accident Calls (322-324)",   key: "emsMva" },
+      { label: "Extrication from Vehicle Calls (352)",     key: "emsExtric" },
+      { label: "Rescue Calls (300, 350-381)",              key: "emsRescue" },
+      { label: "EMS-BLS Calls",                            key: "emsBls" },
+      { label: "EMS-ALS Calls",                            key: "emsAls" },
+      { label: "EMS-BLS Transport",                        key: "emsBlsTransport" },
+      { label: "EMS-ALS Transport",                        key: "emsAlsTransport" },
     ];
 
     const wb = new ExcelJS.Workbook();
