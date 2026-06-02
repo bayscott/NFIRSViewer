@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://js.arcgis.com/4.29/"></script>
 
   <style>
@@ -585,6 +586,7 @@
     <button class="topbar-action-btn accent" id="fdid-apply-btn">Apply</button>
     <div class="topbar-divider"></div>
     <button class="topbar-action-btn" id="export-btn" onclick="exportCSV()">↓ Export CSV</button>
+    <button class="topbar-action-btn" id="afg-btn" onclick="exportAFG()" style="display:none;">↓ AFG Report</button>
     <span id="export-status-bar"></span>
     <button id="change-btn" onclick="resetToGate()">Change State</button>
   </div>
@@ -657,6 +659,7 @@ const EXPORT_FIELDS = [
   "EQ_INV_IGN", "MOB_PROP", "ACRES_BURN_WF"
 ];
 
+
 let map, view;
 let activeLayers       = [];
 let activeYears        = new Set([2024]);
@@ -679,7 +682,7 @@ const STATES = [
   ["VT","Vermont"],["VA","Virginia"],["WA","Washington"],["WV","West Virginia"],
   ["WI","Wisconsin"],["WY","Wyoming"]
 ];
-
+  
 (function buildGateControls() {
   const sel = document.getElementById("state-select");
   STATES.forEach(([abbr, name]) => {
@@ -871,6 +874,7 @@ async function launchApp() {
     currentSidebarFdid = document.getElementById("topbar-fdid-input").value.trim();
     document.getElementById("jurisdiction-badge").textContent =
       currentSidebarFdid ? `${stateName} · FDID ${currentSidebarFdid}` : stateName;
+    document.getElementById("afg-btn").style.display = currentSidebarFdid ? "inline-block" : "none";
     applyFilters();
   };
 
@@ -1240,11 +1244,197 @@ async function exportCSV() {
   btn.textContent = "↓ Export CSV";
 }
 
+async function exportAFG() {
+  const btn    = document.getElementById("afg-btn");
+  const status = document.getElementById("export-status-bar");
+
+  if (!currentSidebarFdid) {
+    status.textContent = "AFG Report requires an FDID filter.";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Building…";
+  status.textContent = "Querying AFG data…";
+
+  const visibleLayers = activeLayers.filter(l => map.layers.includes(l));
+  const yearsActive   = [...activeYears].sort();
+  const baseExpr      = `${FIELD_STATE} = '${currentStateAbbr}' AND ${FIELD_FDID} = '${currentSidebarFdid}'`;
+
+  const STRUCT_CODES = ["11","110","111","112","113","114","115","116","117","118","12","120","121","122","123"];
+  const VEH_CODES    = ["13","130","131","132","133","134","135","136","137","138"];
+  const VEG_CODES    = ["14","140","141","142","143"];
+
+  const structWhere = `INC_TYPE IN (${STRUCT_CODES.map(c => `'${c}'`).join(",")})`;
+  const vehWhere    = `INC_TYPE IN (${VEH_CODES.map(c => `'${c}'`).join(",")})`;
+  const vegWhere    = `INC_TYPE IN (${VEG_CODES.map(c => `'${c}'`).join(",")})`;
+
+  try {
+    const yearData = {};
+
+    for (const year of yearsActive) {
+      const layer = activeLayers.find(l => l.title === `NFIRS ${year}`);
+      if (!layer || !map.layers.includes(layer)) {
+        yearData[year] = null;
+        continue;
+      }
+
+      const w = baseExpr;
+
+      const [
+        othDeath, othInj, ffDeathRes, ffInjRes,
+        s100, s200, s300, s400, s500, s600, s700, s800, s900, total,
+        structFires, vehFires, vegFires, acresBurn,
+        aid1, aid2, aid3, aid4, aidFire
+      ] = await Promise.all([
+        layer.queryFeatures({ where: w, outStatistics: [{ statisticType: "sum", onStatisticField: "OTH_DEATH", outStatisticFieldName: "v" }] }),
+        layer.queryFeatures({ where: w, outStatistics: [{ statisticType: "sum", onStatisticField: "OTH_INJ",   outStatisticFieldName: "v" }] }),
+        layer.queryFeatures({ where: w, outStatistics: [{ statisticType: "sum", onStatisticField: "FF_DEATH",  outStatisticFieldName: "v" }] }),
+        layer.queryFeatures({ where: w, outStatistics: [{ statisticType: "sum", onStatisticField: "FF_INJ",    outStatisticFieldName: "v" }] }),
+        layer.queryFeatureCount({ where: `${w} AND INC_TYPE LIKE '1%'` }),
+        layer.queryFeatureCount({ where: `${w} AND INC_TYPE LIKE '2%'` }),
+        layer.queryFeatureCount({ where: `${w} AND INC_TYPE LIKE '3%'` }),
+        layer.queryFeatureCount({ where: `${w} AND INC_TYPE LIKE '4%'` }),
+        layer.queryFeatureCount({ where: `${w} AND INC_TYPE LIKE '5%'` }),
+        layer.queryFeatureCount({ where: `${w} AND INC_TYPE LIKE '6%'` }),
+        layer.queryFeatureCount({ where: `${w} AND INC_TYPE LIKE '7%'` }),
+        layer.queryFeatureCount({ where: `${w} AND INC_TYPE LIKE '8%'` }),
+        layer.queryFeatureCount({ where: `${w} AND INC_TYPE LIKE '9%'` }),
+        layer.queryFeatureCount({ where: w }),
+        layer.queryFeatureCount({ where: `${w} AND ${structWhere}` }),
+        layer.queryFeatureCount({ where: `${w} AND ${vehWhere}` }),
+        layer.queryFeatureCount({ where: `${w} AND ${vegWhere}` }),
+        layer.queryFeatures({ where: `${w} AND ${vegWhere}`, outStatistics: [{ statisticType: "sum", onStatisticField: "ACRES_BURN", outStatisticFieldName: "v" }] }),
+        layer.queryFeatureCount({ where: `${w} AND AID = '1'` }),
+        layer.queryFeatureCount({ where: `${w} AND AID = '2'` }),
+        layer.queryFeatureCount({ where: `${w} AND AID = '3'` }),
+        layer.queryFeatureCount({ where: `${w} AND AID = '4'` }),
+        layer.queryFeatureCount({ where: `${w} AND INC_TYPE LIKE '1%' AND AID <> 'N'` }),
+      ]);
+
+      const v = r => r.features?.[0]?.attributes?.v || 0;
+
+      yearData[year] = {
+        othDeath:    v(othDeath),
+        othInj:      v(othInj),
+        lodTotal:    v(ffDeathRes) + v(ffInjRes),
+        s100, s200, s300, s400, s500, s600, s700, s800, s900, total,
+        structFires, vehFires, vegFires,
+        acresBurn:   v(acresBurn),
+        aid1, aid2, aid3, aid4, aidFire
+      };
+    }
+
+    const activeYearData = yearsActive.filter(y => yearData[y] !== null);
+    const sum = key => activeYearData.reduce((acc, y) => acc + (yearData[y]?.[key] || 0), 0);
+
+    const headers = ["", ...activeYearData.map(String), "Total"];
+
+    const groups = [
+      { label: "Casualties", underline: true, rows: [] },
+      { label: "Fire-related civilian fatalities",  key: "othDeath" },
+      { label: "Fire-related civilian injuries",    key: "othInj" },
+      { label: "LOD injuries and deaths",           key: "lodTotal" },
+      { label: "NFIRS Incidents", underline: true, rows: [] },
+      { label: "100 series", key: "s100" },
+      { label: "200 series", key: "s200" },
+      { label: "300 series", key: "s300" },
+      { label: "400 series", key: "s400" },
+      { label: "500 series", key: "s500" },
+      { label: "600 series", key: "s600" },
+      { label: "700 series", key: "s700" },
+      { label: "800 series", key: "s800" },
+      { label: "900 series", key: "s900" },
+      { label: "Total",      key: "total" },
+      { label: "Fire Detail", underline: true, rows: [] },
+      { label: "Structure fires (111-123)",    key: "structFires" },
+      { label: "Vehicle fires (130-138)",      key: "vehFires" },
+      { label: "Vegetation fires (140-143)",   key: "vegFires" },
+      { label: "Acreage for veg fires",        key: "acresBurn" },
+      { label: "Aid", underline: true, rows: [] },
+      { label: "Receive mutual aid",           key: "aid1" },
+      { label: "Receive auto aid",             key: "aid2" },
+      { label: "Provide mutual aid",           key: "aid3" },
+      { label: "Provide auto aid",             key: "aid4" },
+      { label: "Aid incidents that were fires",key: "aidFire" },
+    ];
+
+    const wsData = [];
+    wsData.push([`AFG Report — ${currentStateAbbr} FDID ${currentSidebarFdid}`]);
+    wsData.push([`Generated: ${new Date().toLocaleDateString("en-US")}`]);
+    wsData.push([]);
+    wsData.push(headers);
+
+    groups.forEach(g => {
+      if (g.underline) {
+        wsData.push([g.label]);
+      } else {
+        const row = [g.label, ...activeYearData.map(y => yearData[y]?.[g.key] || 0), sum(g.key)];
+        wsData.push(row);
+      }
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // Column widths
+    ws["!cols"] = [
+      { wch: 36 },
+      ...activeYearData.map(() => ({ wch: 10 })),
+      { wch: 10 }
+    ];
+
+    // Style title rows and group headers bold/underline
+    const titleStyle    = { font: { bold: true, sz: 13 } };
+    const headerStyle   = { font: { bold: true }, fill: { fgColor: { rgb: "333F48" } }, alignment: { horizontal: "center" } };
+    const groupStyle    = { font: { bold: true, underline: true }, fill: { fgColor: { rgb: "FFF8F5" } } };
+
+    // Row 0-1: title
+    ["A1","A2"].forEach(ref => {
+      if (ws[ref]) ws[ref].s = titleStyle;
+    });
+
+    // Row 4 (index 3): column headers
+    headers.forEach((_, i) => {
+      const ref = XLSX.utils.encode_cell({ r: 3, c: i });
+      if (ws[ref]) ws[ref].s = headerStyle;
+    });
+
+    // Group header rows
+    let rowIdx = 4;
+    groups.forEach(g => {
+      if (g.underline) {
+        const ref = XLSX.utils.encode_cell({ r: rowIdx, c: 0 });
+        if (ws[ref]) ws[ref].s = groupStyle;
+      }
+      rowIdx++;
+    });
+
+    XLSX.utils.book_append_sheet(wb, ws, "AFG Report");
+
+    const yearRange  = activeYearData.length > 1
+      ? `${activeYearData[0]}-${activeYearData[activeYearData.length - 1]}`
+      : String(activeYearData[0]);
+    const filename = `AFG_Report_${currentStateAbbr}_${currentSidebarFdid}_${yearRange}.xlsx`;
+
+    XLSX.writeFile(wb, filename);
+    status.textContent = `✓ AFG Report downloaded.`;
+
+  } catch (err) {
+    console.error("AFG export error:", err);
+    status.textContent = `AFG Report failed: ${err.message}`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = "↓ AFG Report";
+}
+
 function resetToGate() {
   document.getElementById("gate").classList.remove("hidden");
   document.getElementById("app").classList.remove("visible");
   document.getElementById("type-dropdown").classList.remove("open");
   document.getElementById("topbar-fdid-input").value = "";
+  document.getElementById("afg-btn").style.display = "none";
   currentSidebarFdid = "";
   history.replaceState({}, "", window.location.pathname);
 }
