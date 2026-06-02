@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
   <script src="https://js.arcgis.com/4.29/"></script>
 
   <style>
@@ -659,7 +659,6 @@ const EXPORT_FIELDS = [
   "EQ_INV_IGN", "MOB_PROP", "ACRES_BURN_WF"
 ];
 
-
 let map, view;
 let activeLayers       = [];
 let activeYears        = new Set([2024]);
@@ -682,7 +681,7 @@ const STATES = [
   ["VT","Vermont"],["VA","Virginia"],["WA","Washington"],["WV","West Virginia"],
   ["WI","Wisconsin"],["WY","Wyoming"]
 ];
-  
+
 (function buildGateControls() {
   const sel = document.getElementById("state-select");
   STATES.forEach(([abbr, name]) => {
@@ -780,7 +779,6 @@ function updateGoBtn() {
   const ready = state && activeYears.size > 0 && activeTypes.size > 0;
   document.getElementById("go-btn").disabled = !ready;
 }
-
 function buildTypeDropdown() {
   const container = document.getElementById("type-dropdown-items");
   container.innerHTML = "";
@@ -1274,12 +1272,9 @@ async function exportAFG() {
 
     for (const year of yearsActive) {
       const layer = activeLayers.find(l => l.title === `NFIRS ${year}`);
-      if (!layer || !map.layers.includes(layer)) {
-        yearData[year] = null;
-        continue;
-      }
-
+      if (!layer || !map.layers.includes(layer)) { yearData[year] = null; continue; }
       const w = baseExpr;
+      const v = r => r.features?.[0]?.attributes?.v || 0;
 
       const [
         othDeath, othInj, ffDeathRes, ffInjRes,
@@ -1312,30 +1307,24 @@ async function exportAFG() {
         layer.queryFeatureCount({ where: `${w} AND INC_TYPE LIKE '1%' AND AID <> 'N'` }),
       ]);
 
-      const v = r => r.features?.[0]?.attributes?.v || 0;
-
       yearData[year] = {
-        othDeath:    v(othDeath),
-        othInj:      v(othInj),
-        lodTotal:    v(ffDeathRes) + v(ffInjRes),
+        othDeath: v(othDeath), othInj: v(othInj),
+        lodTotal: v(ffDeathRes) + v(ffInjRes),
         s100, s200, s300, s400, s500, s600, s700, s800, s900, total,
-        structFires, vehFires, vegFires,
-        acresBurn:   v(acresBurn),
+        structFires, vehFires, vegFires, acresBurn: v(acresBurn),
         aid1, aid2, aid3, aid4, aidFire
       };
     }
 
     const activeYearData = yearsActive.filter(y => yearData[y] !== null);
-    const sum = key => activeYearData.reduce((acc, y) => acc + (yearData[y]?.[key] || 0), 0);
-
-    const headers = ["", ...activeYearData.map(String), "Total"];
+    const sum = key => activeYearData.reduce((a, y) => a + (yearData[y]?.[key] || 0), 0);
 
     const groups = [
-      { label: "Casualties", underline: true, rows: [] },
-      { label: "Fire-related civilian fatalities",  key: "othDeath" },
-      { label: "Fire-related civilian injuries",    key: "othInj" },
-      { label: "LOD injuries and deaths",           key: "lodTotal" },
-      { label: "NFIRS Incidents", underline: true, rows: [] },
+      { section: "Casualties" },
+      { label: "Fire-related civilian fatalities", key: "othDeath" },
+      { label: "Fire-related civilian injuries",   key: "othInj" },
+      { label: "LOD injuries and deaths",          key: "lodTotal" },
+      { section: "NFIRS Incidents" },
       { label: "100 series", key: "s100" },
       { label: "200 series", key: "s200" },
       { label: "300 series", key: "s300" },
@@ -1346,78 +1335,110 @@ async function exportAFG() {
       { label: "800 series", key: "s800" },
       { label: "900 series", key: "s900" },
       { label: "Total",      key: "total" },
-      { label: "Fire Detail", underline: true, rows: [] },
-      { label: "Structure fires (111-123)",    key: "structFires" },
-      { label: "Vehicle fires (130-138)",      key: "vehFires" },
-      { label: "Vegetation fires (140-143)",   key: "vegFires" },
-      { label: "Acreage for veg fires",        key: "acresBurn" },
-      { label: "Aid", underline: true, rows: [] },
-      { label: "Receive mutual aid",           key: "aid1" },
-      { label: "Receive auto aid",             key: "aid2" },
-      { label: "Provide mutual aid",           key: "aid3" },
-      { label: "Provide auto aid",             key: "aid4" },
-      { label: "Aid incidents that were fires",key: "aidFire" },
+      { section: "Fire Detail" },
+      { label: "Structure fires (111-123)",  key: "structFires" },
+      { label: "Vehicle fires (130-138)",    key: "vehFires" },
+      { label: "Vegetation fires (140-143)", key: "vegFires" },
+      { label: "Acreage for veg fires",      key: "acresBurn" },
+      { section: "Aid" },
+      { label: "Receive mutual aid",            key: "aid1" },
+      { label: "Receive auto aid",              key: "aid2" },
+      { label: "Provide mutual aid",            key: "aid3" },
+      { label: "Provide auto aid",              key: "aid4" },
+      { label: "Aid incidents that were fires", key: "aidFire" },
     ];
 
-    const wsData = [];
-    wsData.push([`AFG Report — ${currentStateAbbr} FDID ${currentSidebarFdid}`]);
-    wsData.push([`Generated: ${new Date().toLocaleDateString("en-US")}`]);
-    wsData.push([]);
-    wsData.push(headers);
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("AFG Report");
+    const numCols = activeYearData.length + 2;
 
+    ws.getColumn(1).width = 38;
+    activeYearData.forEach((_, i) => { ws.getColumn(i + 2).width = 12; });
+    ws.getColumn(numCols).width = 12;
+
+    const titleRow = ws.addRow([`AFG Report — ${currentStateAbbr} · FDID ${currentSidebarFdid}`]);
+    ws.mergeCells(titleRow.number, 1, titleRow.number, numCols);
+    titleRow.height = 30;
+    titleRow.getCell(1).font      = { name: "Inter", bold: true, size: 14, color: { argb: "FFFFFFFF" } };
+    titleRow.getCell(1).fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FF333F48" } };
+    titleRow.getCell(1).alignment = { horizontal: "left", vertical: "middle", indent: 1 };
+
+    const subRow = ws.addRow([`Generated ${new Date().toLocaleDateString("en-US")}`]);
+    ws.mergeCells(subRow.number, 1, subRow.number, numCols);
+    subRow.height = 16;
+    subRow.getCell(1).font      = { name: "Inter", size: 9, color: { argb: "FF888888" } };
+    subRow.getCell(1).fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F2F5" } };
+    subRow.getCell(1).alignment = { horizontal: "left", vertical: "middle", indent: 1 };
+
+    ws.addRow([]);
+
+    const colHeaderRow = ws.addRow(["", ...activeYearData.map(String), "Total"]);
+    colHeaderRow.height = 20;
+    colHeaderRow.eachCell((cell, colNum) => {
+      if (colNum === 1) return;
+      cell.font      = { name: "Inter", bold: true, size: 10, color: { argb: "FFFFFFFF" } };
+      cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FF333F48" } };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.border    = { bottom: { style: "medium", color: { argb: "FFBF5700" } } };
+    });
+
+    let dataRowIdx = 0;
     groups.forEach(g => {
-      if (g.underline) {
-        wsData.push([g.label]);
+      if (g.section) {
+        const sRow = ws.addRow([g.section]);
+        ws.mergeCells(sRow.number, 1, sRow.number, numCols);
+        sRow.height = 18;
+        sRow.getCell(1).font      = { name: "Inter", bold: true, size: 10, color: { argb: "FFFFFFFF" } };
+        sRow.getCell(1).fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FFBF5700" } };
+        sRow.getCell(1).alignment = { horizontal: "left", vertical: "middle", indent: 1 };
       } else {
-        const row = [g.label, ...activeYearData.map(y => yearData[y]?.[g.key] || 0), sum(g.key)];
-        wsData.push(row);
+        const vals  = activeYearData.map(y => yearData[y]?.[g.key] || 0);
+        const dRow  = ws.addRow([g.label, ...vals, sum(g.key)]);
+        dRow.height = 15;
+
+        const isEven = dataRowIdx % 2 === 0;
+        const rowBg  = isEven ? "FFFFFFFF" : "FFF7F8F9";
+
+        dRow.getCell(1).font      = { name: "Inter", size: 10, color: { argb: "FF333F48" } };
+        dRow.getCell(1).fill      = { type: "pattern", pattern: "solid", fgColor: { argb: rowBg } };
+        dRow.getCell(1).alignment = { horizontal: "left", vertical: "middle", indent: 2 };
+        dRow.getCell(1).border    = { bottom: { style: "hair", color: { argb: "FFE0E0E0" } } };
+
+        vals.forEach((val, i) => {
+          const cell    = dRow.getCell(i + 2);
+          cell.value    = val;
+          cell.font     = { name: "Inter", size: 10, color: { argb: "FF333F48" } };
+          cell.fill     = { type: "pattern", pattern: "solid", fgColor: { argb: rowBg } };
+          cell.numFmt   = "#,##0";
+          cell.alignment = { horizontal: "center", vertical: "middle" };
+          cell.border   = { bottom: { style: "hair", color: { argb: "FFE0E0E0" } } };
+        });
+
+        const totalCell    = dRow.getCell(numCols);
+        totalCell.value    = sum(g.key);
+        totalCell.font     = { name: "Inter", bold: true, size: 10, color: { argb: "FFBF5700" } };
+        totalCell.fill     = { type: "pattern", pattern: "solid", fgColor: { argb: rowBg } };
+        totalCell.numFmt   = "#,##0";
+        totalCell.alignment = { horizontal: "center", vertical: "middle" };
+        totalCell.border   = { bottom: { style: "hair", color: { argb: "FFE0E0E0" } } };
+
+        dataRowIdx++;
       }
     });
 
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-    // Column widths
-    ws["!cols"] = [
-      { wch: 36 },
-      ...activeYearData.map(() => ({ wch: 10 })),
-      { wch: 10 }
-    ];
-
-    // Style title rows and group headers bold/underline
-    const titleStyle    = { font: { bold: true, sz: 13 } };
-    const headerStyle   = { font: { bold: true }, fill: { fgColor: { rgb: "333F48" } }, alignment: { horizontal: "center" } };
-    const groupStyle    = { font: { bold: true, underline: true }, fill: { fgColor: { rgb: "FFF8F5" } } };
-
-    // Row 0-1: title
-    ["A1","A2"].forEach(ref => {
-      if (ws[ref]) ws[ref].s = titleStyle;
-    });
-
-    // Row 4 (index 3): column headers
-    headers.forEach((_, i) => {
-      const ref = XLSX.utils.encode_cell({ r: 3, c: i });
-      if (ws[ref]) ws[ref].s = headerStyle;
-    });
-
-    // Group header rows
-    let rowIdx = 4;
-    groups.forEach(g => {
-      if (g.underline) {
-        const ref = XLSX.utils.encode_cell({ r: rowIdx, c: 0 });
-        if (ws[ref]) ws[ref].s = groupStyle;
-      }
-      rowIdx++;
-    });
-
-    XLSX.utils.book_append_sheet(wb, ws, "AFG Report");
-
-    const yearRange  = activeYearData.length > 1
+    const buffer    = await wb.xlsx.writeBuffer();
+    const blob      = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url       = URL.createObjectURL(blob);
+    const a         = document.createElement("a");
+    const yearRange = activeYearData.length > 1
       ? `${activeYearData[0]}-${activeYearData[activeYearData.length - 1]}`
       : String(activeYearData[0]);
-    const filename = `AFG_Report_${currentStateAbbr}_${currentSidebarFdid}_${yearRange}.xlsx`;
+    a.href     = url;
+    a.download = `AFG_Report_${currentStateAbbr}_${currentSidebarFdid}_${yearRange}.xlsx`;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 
-    XLSX.writeFile(wb, filename);
     status.textContent = `✓ AFG Report downloaded.`;
 
   } catch (err) {
