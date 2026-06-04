@@ -57,7 +57,7 @@
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.12em;
-      color: #0A32FF;
+      color: #122C49;
       margin-bottom: 10px;
     }
 
@@ -103,7 +103,7 @@
       background: none;
       border: none;
       font-size: 11px;
-      color: #0A32FF;
+      color: #122C49;
       cursor: pointer;
       padding: 0;
       text-decoration: underline;
@@ -132,7 +132,7 @@
 
     .field-group select:focus {
       outline: none;
-      border-color: #0A32FF;
+      border-color: #122C49;
     }
 
     .check-grid {
@@ -162,7 +162,7 @@
     .check-item input[type="checkbox"] { display: none; }
 
     .check-item.checked {
-      border-color: #0A32FF;
+      border-color: #122C49;
       background: #f0f0ff;
       color: #58595b;
     }
@@ -180,8 +180,8 @@
     }
 
     .check-item.checked .check-box {
-      background: #0A32FF;
-      border-color: #0A32FF;
+      background: #122C49;
+      border-color: #122C49;
     }
 
     .check-item.checked .check-box::after {
@@ -197,7 +197,7 @@
     #go-btn {
       width: 100%;
       padding: 14px;
-      background: #0A32FF;
+      background: #122C49;
       color: #fff;
       border: none;
       border-radius: 10px;
@@ -209,8 +209,8 @@
       letter-spacing: 0.02em;
     }
 
-    #go-btn:hover { background: #081fa8; }
-    #go-btn:disabled { background: #8080ff; cursor: not-allowed; }
+    #go-btn:hover { background: #0d1f33; }
+    #go-btn:disabled { background: #6a8aaa; cursor: not-allowed; }
 
     .gate-note {
       font-size: 11px;
@@ -275,8 +275,8 @@
     }
 
     .topbar-chip.active {
-      background: #0A32FF;
-      border-color: #0A32FF;
+      background: #122C49;
+      border-color: #122C49;
       color: #fff;
     }
 
@@ -297,7 +297,7 @@
     }
 
     #type-filter-btn:hover { background: rgba(255,255,255,0.08); }
-    #type-filter-btn.has-filter { border-color: #0A32FF; color: #fff; }
+    #type-filter-btn.has-filter { border-color: #122C49; color: #fff; }
 
     #type-dropdown {
       display: none;
@@ -327,7 +327,7 @@
       background: none;
       border: none;
       font-size: 11px;
-      color: #0A32FF;
+      color: #122C49;
       cursor: pointer;
       text-decoration: underline;
     }
@@ -346,7 +346,7 @@
     .type-dropdown-item:hover { background: #f7f7f7; }
 
     .type-dropdown-item input[type="checkbox"] {
-      accent-color: #0A32FF;
+      accent-color: #122C49;
       width: 14px;
       height: 14px;
       cursor: pointer;
@@ -364,7 +364,7 @@
     }
 
     #topbar-fdid-input::placeholder { color: rgba(255,255,255,0.4); }
-    #topbar-fdid-input:focus { outline: none; border-color: #0A32FF; }
+    #topbar-fdid-input:focus { outline: none; border-color: #122C49; }
 
     .topbar-action-btn {
       padding: 4px 10px;
@@ -379,8 +379,8 @@
     }
 
     .topbar-action-btn:hover { background: rgba(255,255,255,0.1); }
-    .topbar-action-btn.accent { background: #0A32FF; border-color: #0A32FF; color: #fff; }
-    .topbar-action-btn.accent:hover { background: #081fa8; }
+    .topbar-action-btn.accent { background: #122C49; border-color: #122C49; color: #fff; }
+    .topbar-action-btn.accent:hover { background: #0d1f33; }
     .topbar-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     #change-btn {
@@ -431,7 +431,7 @@
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.06em;
-      color: #0A32FF;
+      color: #122C49;
       padding: 10px 0 3px;
     }
 
@@ -478,7 +478,7 @@
 
     .chart-bar-fill {
       height: 100%;
-      background: #0A32FF;
+      background: #122C49;
       border-radius: 4px;
       transition: width 0.4s ease;
     }
@@ -503,7 +503,7 @@
       width: 28px;
       height: 28px;
       border: 3px solid #e0e0e0;
-      border-top-color: #0A32FF;
+      border-top-color: #122C49;
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
@@ -525,7 +525,7 @@
     <div class="gate-title-block">
       <div class="gate-title-eyebrow">National Fire Incident Reporting System</div>
       <h1>Incident Viewer</h1>
-      <p>Select your state and filters below.</p>
+      <p>Select your state and filters below. No data loads until you confirm.</p>
     </div>
 
     <div class="gate-section">
@@ -560,7 +560,7 @@
     </div>
 
     <button id="go-btn" disabled onclick="launchApp()">View Incidents</button>
-    <p class="gate-note">This data is sourced from the US Fire Administration's NFIRS Public Data Release (PDR) Lite · 2020–2024</p>
+    <p class="gate-note">NFIRS Public Data Release (PDR) Lite · 2020–2024</p>
   </div>
 </div>
 
@@ -893,7 +893,7 @@ async function launchApp() {
     applyFilters();
   }
 }
-  
+
 function buildTopbarYearChips() {
   const container = document.getElementById("topbar-year-toggles");
   container.innerHTML = "";
@@ -937,7 +937,6 @@ function applyFilters() {
 
   loadSummaryStats(defExp);
 }
-
 async function initMap() {
   const defExp = buildDefinitionExpression();
 
@@ -976,7 +975,7 @@ async function initMap() {
       symbol: {
         type: "simple-marker",
         size: 6,
-        color: [191, 87, 0, 200],
+        color: [18, 44, 73, 200],
         outline: { color: [255, 255, 255, 128], width: 0.5 }
       }
     }
@@ -1343,34 +1342,34 @@ async function exportAFG() {
 
     const groups = [
       { section: "Casualties" },
-      { label: "Fire-related Civilian Fatalities", key: "othDeath" },
-      { label: "Fire-related Civilian Injuries",   key: "othInj" },
-      { label: "LOD Injuries and Deaths",          key: "lodTotal" },
+      { label: "Fire-related civilian fatalities", key: "othDeath" },
+      { label: "Fire-related civilian injuries",   key: "othInj" },
+      { label: "LOD injuries and deaths",          key: "lodTotal" },
       { section: "NFIRS Incidents" },
-      { label: "100 Series", key: "s100" },
-      { label: "200 Series", key: "s200" },
-      { label: "300 Series", key: "s300" },
-      { label: "400 Series", key: "s400" },
-      { label: "500 Series", key: "s500" },
-      { label: "600 Series", key: "s600" },
-      { label: "700 Series", key: "s700" },
-      { label: "800 Series", key: "s800" },
-      { label: "900 Series", key: "s900" },
+      { label: "100 series", key: "s100" },
+      { label: "200 series", key: "s200" },
+      { label: "300 series", key: "s300" },
+      { label: "400 series", key: "s400" },
+      { label: "500 series", key: "s500" },
+      { label: "600 series", key: "s600" },
+      { label: "700 series", key: "s700" },
+      { label: "800 series", key: "s800" },
+      { label: "900 series", key: "s900" },
       { label: "Total",      key: "total" },
       { section: "Fire Detail" },
-      { label: "Structure Fires (111-123)",  key: "structFires" },
-      { label: "Vehicle Fires (130-138)",    key: "vehFires" },
-      { label: "Vegetation Fires (140-143)", key: "vegFires" },
-      { label: "Acreage of Vegetation Fires",      key: "acresBurn" },
+      { label: "Structure fires (111-123)",  key: "structFires" },
+      { label: "Vehicle fires (130-138)",    key: "vehFires" },
+      { label: "Vegetation fires (140-143)", key: "vegFires" },
+      { label: "Acreage for veg fires",      key: "acresBurn" },
       { section: "Aid" },
-      { label: "Received Mutual Aid",            key: "aid1" },
-      { label: "Received Auto Aid",              key: "aid2" },
-      { label: "Provided Mutual Aid",            key: "aid3" },
-      { label: "Provided Auto Aid",              key: "aid4" },
-      { label: "All Aid for Fire Calls", key: "aidFire" },
+      { label: "Receive mutual aid",            key: "aid1" },
+      { label: "Receive auto aid",              key: "aid2" },
+      { label: "Provide mutual aid",            key: "aid3" },
+      { label: "Provide auto aid",              key: "aid4" },
+      { label: "Aid incidents that were fires", key: "aidFire" },
       { section: "EMS" },
-      { label: "Motor Vehicle Accidents (322-324)",   key: "emsMva" },
-      { label: "Extrication from Vehicles (352)",     key: "emsExtric" },
+      { label: "Motor Vehicle Accident Calls (322-324)",   key: "emsMva" },
+      { label: "Extrication from Vehicle Calls (352)",     key: "emsExtric" },
       { label: "Rescue Calls (300, 350-381)",              key: "emsRescue" },
       { label: "EMS-BLS Calls",                            key: "emsBls" },
       { label: "EMS-ALS Calls",                            key: "emsAls" },
@@ -1378,30 +1377,30 @@ async function exportAFG() {
       { label: "EMS-ALS Transport",                        key: "emsAlsTransport" },
     ];
 
-   const wb = new ExcelJS.Workbook();
+    const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet("AFG Report");
     const numCols = activeYearData.length + 2;
- 
+
     ws.getColumn(1).width = 38;
     activeYearData.forEach((_, i) => { ws.getColumn(i + 2).width = 12; });
     ws.getColumn(numCols).width = 12;
- 
+
     const titleRow = ws.addRow([`AFG Report — ${currentStateAbbr} · FDID ${currentSidebarFdid}`]);
     ws.mergeCells(titleRow.number, 1, titleRow.number, numCols);
     titleRow.height = 30;
     titleRow.getCell(1).font      = { name: "Inter", bold: true, size: 14, color: { argb: "FFFFFFFF" } };
     titleRow.getCell(1).fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FF58595b" } };
     titleRow.getCell(1).alignment = { horizontal: "left", vertical: "middle", indent: 1 };
- 
+
     const subRow = ws.addRow([`Generated ${new Date().toLocaleDateString("en-US")}`]);
     ws.mergeCells(subRow.number, 1, subRow.number, numCols);
     subRow.height = 16;
     subRow.getCell(1).font      = { name: "Inter", size: 9, color: { argb: "FF888888" } };
     subRow.getCell(1).fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FFebebeb" } };
     subRow.getCell(1).alignment = { horizontal: "left", vertical: "middle", indent: 1 };
- 
+
     ws.addRow([]);
- 
+
     const colHeaderRow = ws.addRow(["", ...activeYearData.map(String), "Total"]);
     colHeaderRow.height = 20;
     colHeaderRow.eachCell((cell, colNum) => {
@@ -1409,9 +1408,9 @@ async function exportAFG() {
       cell.font      = { name: "Inter", bold: true, size: 10, color: { argb: "FFFFFFFF" } };
       cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FF58595b" } };
       cell.alignment = { horizontal: "center", vertical: "middle" };
-      cell.border    = { bottom: { style: "medium", color: { argb: "FF000095" } } };
+      cell.border    = { bottom: { style: "medium", color: { argb: "FF122C49" } } };
     });
- 
+
     let dataRowIdx = 0;
     groups.forEach(g => {
       if (g.section) {
@@ -1419,21 +1418,21 @@ async function exportAFG() {
         ws.mergeCells(sRow.number, 1, sRow.number, numCols);
         sRow.height = 18;
         sRow.getCell(1).font      = { name: "Inter", bold: true, size: 10, color: { argb: "FFFFFFFF" } };
-        sRow.getCell(1).fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FF000095" } };
+        sRow.getCell(1).fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FF122C49" } };
         sRow.getCell(1).alignment = { horizontal: "left", vertical: "middle", indent: 1 };
       } else {
         const vals  = activeYearData.map(y => yearData[y]?.[g.key] || 0);
         const dRow  = ws.addRow([g.label, ...vals, sum(g.key)]);
         dRow.height = 15;
- 
+
         const isEven = dataRowIdx % 2 === 0;
         const rowBg  = isEven ? "FFFFFFFF" : "FFF7F8F9";
- 
+
         dRow.getCell(1).font      = { name: "Inter", size: 10, color: { argb: "FF58595b" } };
         dRow.getCell(1).fill      = { type: "pattern", pattern: "solid", fgColor: { argb: rowBg } };
         dRow.getCell(1).alignment = { horizontal: "left", vertical: "middle", indent: 2 };
         dRow.getCell(1).border    = { bottom: { style: "hair", color: { argb: "FFE0E0E0" } } };
- 
+
         vals.forEach((val, i) => {
           const cell    = dRow.getCell(i + 2);
           cell.value    = val;
@@ -1443,19 +1442,19 @@ async function exportAFG() {
           cell.alignment = { horizontal: "center", vertical: "middle" };
           cell.border   = { bottom: { style: "hair", color: { argb: "FFE0E0E0" } } };
         });
- 
+
         const totalCell    = dRow.getCell(numCols);
         totalCell.value    = sum(g.key);
-        totalCell.font     = { name: "Inter", bold: true, size: 10, color: { argb: "FF000095" } };
+        totalCell.font     = { name: "Inter", bold: true, size: 10, color: { argb: "FF122C49" } };
         totalCell.fill     = { type: "pattern", pattern: "solid", fgColor: { argb: rowBg } };
         totalCell.numFmt   = "#,##0";
         totalCell.alignment = { horizontal: "center", vertical: "middle" };
         totalCell.border   = { bottom: { style: "hair", color: { argb: "FFE0E0E0" } } };
- 
+
         dataRowIdx++;
       }
     });
- 
+
     const buffer    = await wb.xlsx.writeBuffer();
     const blob      = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     const url       = URL.createObjectURL(blob);
@@ -1468,18 +1467,18 @@ async function exportAFG() {
     document.body.appendChild(a); a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
- 
+
     status.textContent = `✓ AFG Report downloaded.`;
- 
+
   } catch (err) {
     console.error("AFG export error:", err);
     status.textContent = `AFG Report failed: ${err.message}`;
   }
- 
+
   btn.disabled = false;
   btn.textContent = "↓ AFG Report";
 }
- 
+
 function clearFdid() {
   currentSidebarFdid = "";
   document.getElementById("topbar-fdid-input").value = "";
@@ -1489,7 +1488,7 @@ function clearFdid() {
   badge.textContent = badge.textContent.split(" · FDID")[0];
   applyFilters();
 }
- 
+
 function resetToGate() {
   document.getElementById("gate").classList.remove("hidden");
   document.getElementById("app").classList.remove("visible");
@@ -1500,6 +1499,7 @@ function resetToGate() {
   currentSidebarFdid = "";
   history.replaceState({}, "", window.location.pathname);
 }
+
 (function restoreFromUrl() {
   const p = new URLSearchParams(window.location.search);
   if (!p.get("state")) return;
