@@ -560,7 +560,7 @@
     </div>
 
     <button id="go-btn" disabled onclick="launchApp()">View Incidents</button>
-    <p class="gate-note">NFIRS Public Data Release (PDR) Lite · 2020–2024</p>
+    <p class="gate-note">NFIRS Public Data Release (PDR) Lite · 2020–2025</p>
   </div>
 </div>
 
@@ -626,6 +626,7 @@ const FEATURE_SERVICES = [
   { year: 2022, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_Service_2022/FeatureServer/0" },
   { year: 2023, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_Service_2023/FeatureServer/0" },
   { year: 2024, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_Service_2024/FeatureServer/0" },
+  {"year": 2025, "url": "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_Service_2025/FeatureServer/0"},
 ];
 
 const INC_TYPES = [
@@ -662,7 +663,7 @@ const EXPORT_FIELDS = [
 
 let map, view;
 let activeLayers       = [];
-let activeYears        = new Set([2024]);
+let activeYears        = new Set([2025]);
 let activeTypes        = new Set(INC_TYPES.map(t => t.code));
 let currentStateAbbr   = "";
 let currentSidebarFdid = "";
