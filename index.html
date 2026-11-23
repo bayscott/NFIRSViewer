@@ -676,7 +676,7 @@ function personHTML(p, i) {
         <div class="panel" data-ek="p${i}:dt">
           <div class="grid">
             <div class="field"><label class="label" for="p${i}-date">${ICON.cal}<span><span class="req-star">*</span> Date</span></label><input class="input" type="date" id="p${i}-date" data-p="${i}" data-f="date" max="${TODAY}" value="${esc(p.date)}"></div>
-            <div class="field"><label class="label" for="p${i}-time">${ICON.clock}<span><span class="req-star">*</span> Time</span><span class="req-tag">24-hour</span></label><input class="input" type="time" step="1" id="p${i}-time" data-p="${i}" data-f="time" value="${esc(p.time)}"></div>
+            <div class="field"><label class="label" for="p${i}-time">${ICON.clock}<span><span class="req-star">*</span> Time</span><span class="req-tag">24-hour, HH:MM:SS</span></label><input class="input" type="text" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="HH:MM:SS" data-time id="p${i}-time" data-p="${i}" data-f="time" value="${esc(p.time)}"></div>
           </div>
         </div>
       </div>
@@ -752,10 +752,24 @@ nonRoot.addEventListener("change", e => {
   const t = e.target; if (t.dataset.p === undefined || !t.dataset.f) return;
   const i = +t.dataset.p, f = t.dataset.f, p = non.people[i];
   p[f] = t.value; if (t.tagName === "SELECT") t.classList.toggle("empty", !t.value);
+  if (f === "time") { const n = normTime(t.value); if (n) { p.time = t.value = n; } }
   if (f === "date" || f === "time") dropError(nonRoot, `p${i}:dt`);
   if (f === "activity") { if (t.value !== "TRAINING_ACTIVITY_DRILL") { p.foam = ""; p.foamTypes = []; } renderFoam(i); }
   if (["activity", "cause", "severity", "disposition"].includes(f)) dropError(nonRoot, `p${i}:ctypes`);
   dirty();
+});
+/* 24-hour time entry: digits auto-format to HH:MM:SS; HH:MM gets ":00" on blur */
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/;
+function normTime(v) {
+  const d = String(v).replace(/\D/g, "");
+  if (d.length !== 4 && d.length !== 6) return null;
+  const t = `${d.slice(0, 2)}:${d.slice(2, 4)}:${d.length === 6 ? d.slice(4, 6) : "00"}`;
+  return TIME_RE.test(t) ? t : null;
+}
+nonRoot.addEventListener("input", e => {
+  const t = e.target; if (!t.matches("[data-time]")) return;
+  const d = t.value.replace(/\D/g, "").slice(0, 6);
+  t.value = d.slice(0, 2) + (d.length > 2 ? ":" + d.slice(2, 4) : "") + (d.length > 4 ? ":" + d.slice(4, 6) : "");
 });
 function casualtyStarted(p) { return !!(p.activity || p.cause || p.severity || p.disposition || p.ctypes.length); }
 function validateNon() {
@@ -763,6 +777,7 @@ function validateNon() {
   if (!non.people.length) errs.push(["count", "Enter how many people were involved."]);
   non.people.forEach((p, i) => {
     if (!p.date || !p.time) errs.push([`p${i}:dt`, "Date and time are required."]);
+    else if (!TIME_RE.test(p.time)) errs.push([`p${i}:dt`, "Enter the time as HH:MM:SS on a 24-hour clock, e.g. 14:05:00."]);
     else if (p.date > TODAY) errs.push([`p${i}:dt`, "Date can't be in the future."]);
     if (!p.ctypes.length && !p.etypes.length) {
       if (casualtyStarted(p)) errs.push([`p${i}:ctypes`, "Select at least one casualty type to report this casualty."]);
@@ -850,7 +865,7 @@ document.addEventListener("click", e => {
   const F = FORMS[current], act = b.dataset.action;
   if (act === "save") {
     store(F.key, F.get());
-    savedAt[current] = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    savedAt[current] = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
     updateSavedBadge(); toast("Draft saved on this device");
   }
   if (act === "reset") {
