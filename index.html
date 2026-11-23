@@ -1,1518 +1,895 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NFIRS Incident Viewer</title>
-
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
-  <script src="https://js.arcgis.com/4.29/"></script>
-
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
-      background: #ebebeb;
-      color: #58595b;
-    }
-
-    #gate {
-      position: fixed;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #ebebeb;
-      z-index: 9999;
-      transition: opacity 0.4s ease;
-      overflow-y: auto;
-      padding: 24px;
-    }
-
-    #gate.hidden { opacity: 0; pointer-events: none; }
-
-    .gate-card {
-      background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.10);
-      padding: 48px 52px;
-      width: 100%;
-      max-width: 700px;
-    }
-
-    .gate-title-block {
-      text-align: center;
-      margin-bottom: 36px;
-      padding-bottom: 32px;
-      border-bottom: 1px solid #eee;
-    }
-
-    .gate-title-eyebrow {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: #122C49;
-      margin-bottom: 10px;
-    }
-
-    .gate-title-block h1 {
-      font-size: 30px;
-      font-weight: 700;
-      color: #58595b;
-      letter-spacing: -0.5px;
-      line-height: 1.15;
-      margin-bottom: 10px;
-    }
-
-    .gate-title-block p {
-      font-size: 14px;
-      color: #888;
-      line-height: 1.6;
-      max-width: 420px;
-      margin: 0 auto;
-    }
-
-    .gate-section {
-      margin-bottom: 28px;
-    }
-
-    .gate-section-label {
-      font-size: 13px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: #58595b;
-      margin-bottom: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .gate-section-label .select-links {
-      display: flex;
-      gap: 10px;
-    }
-
-    .gate-section-label .select-links button {
-      background: none;
-      border: none;
-      font-size: 11px;
-      color: #122C49;
-      cursor: pointer;
-      padding: 0;
-      text-decoration: underline;
-      font-weight: 400;
-      text-transform: none;
-      letter-spacing: 0;
-    }
-
-    .field-group { margin-bottom: 0; }
-
-    .field-group select {
-      width: 100%;
-      padding: 11px 14px;
-      border: 1.5px solid #d0d0d0;
-      border-radius: 10px;
-      font-size: 14px;
-      color: #58595b;
-      background: #fff;
-      appearance: none;
-      transition: border-color 0.15s;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 14px center;
-      padding-right: 36px;
-    }
-
-    .field-group select:focus {
-      outline: none;
-      border-color: #122C49;
-    }
-
-    .check-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 7px;
-    }
-
-    .check-grid.years-grid {
-      grid-template-columns: repeat(5, 1fr);
-    }
-
-    .check-item {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      padding: 8px 12px;
-      border: 1.5px solid #d0d0d0;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 13px;
-      color: #555;
-      transition: all 0.15s;
-      user-select: none;
-    }
-
-    .check-item input[type="checkbox"] { display: none; }
-
-    .check-item.checked {
-      border-color: #122C49;
-      background: #f0f0ff;
-      color: #58595b;
-    }
-
-    .check-item .check-box {
-      width: 15px;
-      height: 15px;
-      border: 1.5px solid #ccc;
-      border-radius: 4px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      transition: all 0.15s;
-    }
-
-    .check-item.checked .check-box {
-      background: #122C49;
-      border-color: #122C49;
-    }
-
-    .check-item.checked .check-box::after {
-      content: "";
-      width: 8px;
-      height: 5px;
-      border-left: 2px solid #fff;
-      border-bottom: 2px solid #fff;
-      transform: rotate(-45deg) translateY(-1px);
-      display: block;
-    }
-
-    #go-btn {
-      width: 100%;
-      padding: 14px;
-      background: #122C49;
-      color: #fff;
-      border: none;
-      border-radius: 10px;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      margin-top: 8px;
-      transition: background 0.15s;
-      letter-spacing: 0.02em;
-    }
-
-    #go-btn:hover { background: #0d1f33; }
-    #go-btn:disabled { background: #6a8aaa; cursor: not-allowed; }
-
-    .gate-note {
-      font-size: 11px;
-      color: #bbb;
-      text-align: center;
-      margin-top: 14px;
-      line-height: 1.5;
-    }
-
-    #app { display: none; height: 100vh; flex-direction: column; }
-    #app.visible { display: flex; }
-
-    #topbar {
-      height: 52px;
-      background: #58595b;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      padding: 0 16px;
-      gap: 10px;
-      flex-shrink: 0;
-      overflow: visible;
-      position: relative;
-      z-index: 500;
-    }
-
-    #topbar h2 { font-size: 14px; font-weight: 700; white-space: nowrap; }
-
-    #jurisdiction-badge {
-      background: rgba(255,255,255,0.12);
-      border-radius: 20px;
-      padding: 3px 10px;
-      font-size: 11px;
-      color: #cde;
-      white-space: nowrap;
-    }
-
-    .topbar-divider {
-      width: 1px;
-      height: 24px;
-      background: rgba(255,255,255,0.2);
-      flex-shrink: 0;
-    }
-
-    #topbar-year-toggles {
-      display: flex;
-      gap: 3px;
-      align-items: center;
-      flex-shrink: 0;
-    }
-
-    .topbar-chip {
-      padding: 3px 8px;
-      border-radius: 20px;
-      border: 1px solid rgba(255,255,255,0.25);
-      font-size: 11px;
-      cursor: pointer;
-      background: transparent;
-      color: rgba(255,255,255,0.55);
-      transition: all 0.15s;
-      white-space: nowrap;
-    }
-
-    .topbar-chip.active {
-      background: #122C49;
-      border-color: #122C49;
-      color: #fff;
-    }
-
-    #type-filter-wrapper {
-      position: relative;
-      flex-shrink: 0;
-    }
-
-    #type-filter-btn {
-      padding: 4px 9px;
-      border-radius: 6px;
-      border: 1px solid rgba(255,255,255,0.25);
-      font-size: 11px;
-      cursor: pointer;
-      background: transparent;
-      color: rgba(255,255,255,0.8);
-      white-space: nowrap;
-    }
-
-    #type-filter-btn:hover { background: rgba(255,255,255,0.08); }
-    #type-filter-btn.has-filter { border-color: #122C49; color: #fff; }
-
-    #type-dropdown {
-      display: none;
-      position: absolute;
-      top: calc(100% + 8px);
-      left: 0;
-      background: #fff;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.18);
-      z-index: 9000;
-      min-width: 260px;
-      padding: 8px 0;
-    }
-
-    #type-dropdown.open { display: block; }
-
-    .type-dropdown-header {
-      display: flex;
-      justify-content: space-between;
-      padding: 4px 12px 8px;
-      border-bottom: 1px solid #f0f0f0;
-      margin-bottom: 4px;
-    }
-
-    .type-dropdown-header button {
-      background: none;
-      border: none;
-      font-size: 11px;
-      color: #122C49;
-      cursor: pointer;
-      text-decoration: underline;
-    }
-
-    .type-dropdown-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 7px 12px;
-      cursor: pointer;
-      font-size: 13px;
-      color: #58595b;
-      transition: background 0.1s;
-    }
-
-    .type-dropdown-item:hover { background: #f7f7f7; }
-
-    .type-dropdown-item input[type="checkbox"] {
-      accent-color: #122C49;
-      width: 14px;
-      height: 14px;
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-
-    #topbar-fdid-input {
-      padding: 4px 8px;
-      border-radius: 6px;
-      border: 1px solid rgba(255,255,255,0.25);
-      background: rgba(255,255,255,0.08);
-      color: #fff;
-      font-size: 11px;
-      width: 110px;
-    }
-
-    #topbar-fdid-input::placeholder { color: rgba(255,255,255,0.4); }
-    #topbar-fdid-input:focus { outline: none; border-color: #122C49; }
-
-    .topbar-action-btn {
-      padding: 4px 10px;
-      border-radius: 6px;
-      border: 1px solid rgba(255,255,255,0.25);
-      font-size: 11px;
-      cursor: pointer;
-      background: transparent;
-      color: rgba(255,255,255,0.8);
-      white-space: nowrap;
-      transition: background 0.15s;
-    }
-
-    .topbar-action-btn:hover { background: rgba(255,255,255,0.1); }
-    .topbar-action-btn.accent { background: #122C49; border-color: #122C49; color: #fff; }
-    .topbar-action-btn.accent:hover { background: #0d1f33; }
-    .topbar-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    #change-btn {
-      margin-left: auto;
-      background: none;
-      border: 1px solid rgba(255,255,255,0.3);
-      color: #cde;
-      border-radius: 6px;
-      padding: 4px 10px;
-      font-size: 11px;
-      cursor: pointer;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-
-    #change-btn:hover { background: rgba(255,255,255,0.08); }
-
-    #main { display: flex; flex: 1; overflow: hidden; }
-    #viewDiv { flex: 1; position: relative; }
-
-    #sidebar {
-      width: 300px;
-      background: #fff;
-      border-left: 1px solid #e0e0e0;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    .sidebar-header {
-      padding: 14px 18px;
-      border-bottom: 1px solid #eee;
-      font-size: 12px;
-      font-weight: 700;
-      color: #58595b;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    #stats-panel {
-      padding: 14px 18px;
-      overflow-y: auto;
-      flex-shrink: 0;
-    }
-
-    .stat-section {
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: #122C49;
-      padding: 10px 0 3px;
-    }
-
-    .stat-section:first-child { padding-top: 0; }
-
-    .stat-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 7px 0;
-      border-bottom: 1px solid #f0f0f0;
-      font-size: 12px;
-    }
-
-    .stat-row .label { color: #777; }
-    .stat-row .value { font-weight: 700; color: #58595b; }
-
-    #chart-inner {
-      padding: 4px 0 8px;
-    }
-
-    .chart-row {
-      margin-bottom: 10px;
-    }
-
-    .chart-label {
-      display: flex;
-      justify-content: space-between;
-      font-size: 11px;
-      color: #555;
-      margin-bottom: 3px;
-    }
-
-    .chart-label .chart-count {
-      font-weight: 700;
-      color: #58595b;
-    }
-
-    .chart-bar-bg {
-      height: 8px;
-      background: #f0f0f0;
-      border-radius: 4px;
-      overflow: hidden;
-    }
-
-    .chart-bar-fill {
-      height: 100%;
-      background: #122C49;
-      border-radius: 4px;
-      transition: width 0.4s ease;
-    }
-
-    #loading-overlay {
-      position: absolute;
-      inset: 0;
-      background: rgba(255,255,255,0.8);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-      color: #555;
-      z-index: 100;
-      gap: 10px;
-    }
-
-    #loading-overlay.hidden { display: none; }
-
-    .spinner {
-      width: 28px;
-      height: 28px;
-      border: 3px solid #e0e0e0;
-      border-top-color: #122C49;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    #export-status-bar {
-      font-size: 11px;
-      color: rgba(255,255,255,0.6);
-      white-space: nowrap;
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Health and Safety Forms</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Tokens from "NERIS Incident Submission Styles" (Log Incident v2), light mode */
+:root{
+  --primary:#262F68; --primary-hover:#1D2453; --primary-fg:#F8FAFC;
+  --page:#D4D5E1; --card:#FFFFFF; --fg:#020817;
+  --muted:#F1F5F9; --muted-fg:#64748B; --input:#E2E8F0; --line:#ECEDED;
+  --destructive:#EF4444; --brand-red:#9A1E22; --brand-gray:#E0E1E1; --brand-gold:#DBA620; --brand-green:#229A1E;
+  --ring:rgba(2,8,23,.10); --row-alt:#F8FAFC; --hover:#F1F5F9;
+  --sky-bg:#F0F9FF; --sky-border:#BAE6FD; --sky-fg:#075985;
+  --emerald-bg:#D1FAE5; --emerald:#059669;
+  --radius:.5rem;                      /* rounded-lg 8px */
+  --r-md:calc(var(--radius) - 2px);    /* 6px */
+  --r-sm:calc(var(--radius) - 4px);    /* 4px */
+  --r-xl:12px;
+  --focus:0 0 0 3px rgba(38,47,104,.22);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--page);color:var(--fg);font:14px/1.5 "Inter",system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+[hidden]{display:none!important}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+svg{flex:none}
+
+/* ---------- App bar ---------- */
+.appbar{background:var(--card);border-bottom:1px solid var(--ring);position:sticky;top:0;z-index:30}
+.appbar-in{max-width:1280px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:12px;min-height:56px}
+.appbar img.logo{height:32px;width:auto;display:block}
+.wordmark{font-weight:700;font-size:22px;letter-spacing:.04em;color:var(--primary)}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;border-radius:999px;padding:2px 10px;white-space:nowrap}
+.badge.draft{background:var(--brand-gray);color:var(--fg)}
+.badge.saved{background:var(--brand-green);color:#fff}
+.badge svg{width:12px;height:12px}
+
+/* ---------- Page ---------- */
+.page{width:100%;max-width:1280px;margin:0 auto;padding:32px 16px;display:flex;flex-direction:column;gap:24px}
+@media (min-width:640px){.page,.appbar-in{padding-left:24px;padding-right:24px}}
+@media (min-width:1024px){.page,.appbar-in{padding-left:32px;padding-right:32px}}
+
+/* Department header: rounded-none, px-6 py-4 gap-4, 56px avatar */
+.dept-header{background:var(--card);border-radius:0;padding:16px 24px;display:flex;align-items:center;gap:16px}
+.dept-header img.patch{width:56px;height:56px;object-fit:contain;display:block;border-radius:0}
+.patch-fallback{width:56px;height:56px;border-radius:0;background:var(--primary);color:var(--primary-fg);display:grid;place-items:center;font-weight:600;font-size:16px}
+.dept-name{font-size:18px;font-weight:600;line-height:1.3}
+.dept-id{font-size:14px;color:var(--muted-fg)}
+
+/* Progress-style form switcher: px-5 py-5, triggers min-w-32, size-8 markers */
+.stack{display:flex;flex-direction:column;gap:8px}
+.progress{background:var(--card);border-radius:var(--r-xl);box-shadow:0 0 0 1px var(--ring);padding:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.tabs{display:flex;gap:4px}
+.tab{min-width:128px;border:0;border-radius:0;background:none;display:flex;flex-direction:column;align-items:center;gap:8px;padding:4px 8px}
+.tab .mk{width:32px;height:32px;border-radius:999px;border:2px solid var(--line);background:var(--card);color:var(--muted-fg);display:grid;place-items:center;transition:background .15s,border-color .15s}
+.tab .mk svg{width:16px;height:16px}
+.tab .tab-label{font-size:12px;font-weight:600;color:var(--muted-fg)}
+.tab[aria-selected="true"] .mk{background:var(--primary);border-color:var(--primary);color:var(--primary-fg)}
+.tab[aria-selected="true"] .tab-label{color:var(--fg)}
+.tab:hover .mk{border-color:var(--primary)}
+.tab:focus-visible{outline:none}
+.tab:focus-visible .mk{box-shadow:var(--focus)}
+.demo-link{margin-left:auto;border:0;background:none;color:var(--primary);font-size:14px;font-weight:500;text-decoration:underline;text-underline-offset:3px;padding:4px 0}
+
+/* ---------- Main step card: py-4 gap-4; header px-4 pb-4; body px-4 gap-y-8 min-h-96; footer p-4 ---------- */
+.step{background:var(--card);border-radius:var(--r-xl);box-shadow:0 0 0 1px var(--ring);padding:16px 0;display:flex;flex-direction:column;gap:16px}
+.step-head{padding:0 16px 16px;border-bottom:1px solid var(--input);display:flex;gap:12px;align-items:flex-start}
+.step-icon{width:40px;height:40px;border-radius:var(--radius);background:var(--muted);color:var(--primary);display:grid;place-items:center}
+.step-icon svg{width:20px;height:20px}
+.step-title{margin:0;font-size:20px;font-weight:600;line-height:1.3}
+.step-desc{margin:4px 0 0;color:var(--muted-fg);max-width:760px}
+.step-desc strong{color:var(--fg);font-weight:500}
+.step-body{padding:0 16px;display:flex;flex-direction:column;gap:32px;min-height:384px}
+.step-foot{padding:16px;border-top:1px solid var(--input);display:flex;align-items:center;gap:8px}
+.step-foot .spacer{flex:1}
+.step-body > div:empty,.section-body > div:empty{display:none}
+
+/* ---------- Compact section card: header px-3 py-3 gap-x-3 gap-y-0.5; body px-3 py-4 gap-y-8 ---------- */
+.section{background:var(--card);border-radius:var(--r-xl);box-shadow:0 0 0 1px var(--ring)}
+.section-head{background:var(--muted);border-radius:var(--r-xl) var(--r-xl) 0 0;padding:12px;display:flex;align-items:center;column-gap:12px;row-gap:2px;width:100%;border:0;text-align:left}
+.section-icon{width:32px;height:32px;border-radius:var(--r-md);background:var(--card);box-shadow:0 0 0 1px var(--input);color:var(--primary);display:grid;place-items:center}
+.section-icon svg{width:16px;height:16px}
+.sec-title{margin:0;font-size:14px;font-weight:600;line-height:1.35;color:var(--fg)}
+.section-sub{display:block;margin:0;font-size:.8rem;color:var(--muted-fg);font-weight:400}
+.section-body{padding:16px 12px;display:flex;flex-direction:column;gap:32px}
+.group{display:flex;flex-direction:column;gap:16px}
+.section-title{margin:0;font-size:18px;font-weight:500;line-height:1.35;color:var(--fg)}
+
+/* ---------- Fields: grid-cols-1 lg:grid-cols-2 gap-5; panel px-4 py-6; field space-y-2 ---------- */
+.grid{display:grid;grid-template-columns:1fr;gap:20px;align-items:start}
+@media (min-width:1024px){.grid{grid-template-columns:1fr 1fr}.grid .span-2{grid-column:span 2}}
+.panel{border:1px solid var(--input);border-radius:var(--radius);padding:24px 16px}
+.field{display:flex;flex-direction:column;gap:8px;min-width:0}
+.field.narrow{max-width:420px}
+.label{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:500;line-height:1.4;margin:0}
+.label svg{width:16px;height:16px;color:var(--muted-fg)}
+.req-star{color:var(--destructive);margin-right:-2px}
+.req-tag{color:var(--muted-fg);font-size:.8rem;font-weight:400;margin-left:4px}
+.hint{font-size:.8rem;color:var(--muted-fg);margin:0}
+.err{color:var(--destructive);font-size:.8rem;font-weight:500;display:flex;gap:5px;align-items:center}
+.input{width:100%;height:36px;border:1px solid var(--input);border-radius:var(--r-md);background:var(--card);padding:4px 12px;font-size:14px;outline:none;transition:border-color .15s,box-shadow .15s}
+.input::placeholder{color:var(--muted-fg)}
+.select{width:100%;height:40px;border:1px solid var(--input);border-radius:var(--r-md);background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 12px center;padding:8px 36px 8px 12px;font-size:14px;appearance:none;-webkit-appearance:none;outline:none}
+.select.empty{color:var(--muted-fg)}
+.select option{color:var(--fg)}
+.input:focus,.select:focus,.ms-field:focus-visible,.mp-field:focus-visible{border-color:var(--primary);box-shadow:var(--focus)}
+.has-error .input,.has-error .select,.has-error .ms-field,.has-error .mp-field{border-color:var(--destructive)}
+.panel.has-error{border-color:var(--destructive)}
+.has-error.matrix-wrap{border-color:var(--destructive)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* Buttons: h-9 px-4 py-2, 14px medium, rounded-md */
+.btn{height:36px;padding:8px 16px;border-radius:var(--r-md);font-size:14px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid transparent;white-space:nowrap;transition:background .15s,border-color .15s}
+.btn svg{width:16px;height:16px}
+.btn:focus-visible{outline:none;box-shadow:var(--focus)}
+.btn-primary{background:var(--primary);color:var(--primary-fg)}.btn-primary:hover{background:var(--primary-hover)}
+.btn-outline{background:var(--card);border-color:var(--input);color:var(--fg)}.btn-outline:hover{background:var(--hover)}
+.btn-danger{background:var(--card);border-color:var(--input);color:var(--brand-red)}.btn-danger:hover{background:#FEF2F2;border-color:#FECACA}
+.btn-danger-solid{background:var(--brand-red);color:#fff}.btn-danger-solid:hover{background:#7F181B}
+
+.banner{display:flex;gap:8px;align-items:center;background:#FEF2F2;border:1px solid #FECACA;color:var(--destructive);border-radius:var(--radius);padding:10px 12px;font-weight:500}
+.info{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:.8rem;color:var(--muted-fg)}
+.info .demo-link{margin:0;font-size:.8rem}
+.chip-unit{background:var(--muted);color:var(--fg);font-weight:500;font-size:12px;border-radius:var(--r-md);padding:2px 8px;box-shadow:0 0 0 1px var(--input)}
+.empty-state{border:1px dashed var(--input);border-radius:var(--radius);padding:24px;text-align:center;color:var(--muted-fg)}
+
+/* ---------- Matrix ---------- */
+.matrix-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--input);border-radius:var(--radius)}
+table.matrix{border-collapse:separate;border-spacing:0;width:100%;min-width:560px;font-size:14px}
+.matrix th{background:var(--primary);color:var(--primary-fg);font-weight:600;font-size:12px;line-height:1.3;padding:10px 6px;text-align:center;vertical-align:middle;border-left:1px solid rgba(248,250,252,.16)}
+.matrix th:first-child{text-align:left;padding-left:12px;min-width:150px;border-left:0}
+.matrix td{border-top:1px solid var(--input);border-left:1px solid var(--input);text-align:center;height:44px;padding:0}
+.matrix td:first-child{text-align:left;padding:6px 12px;font-weight:500;border-left:0}
+.matrix tbody tr:nth-child(even) td{background:var(--row-alt)}
+.matrix tbody tr:nth-child(odd) td{background:var(--card)}
+.matrix th:first-child,.matrix td:first-child{position:sticky;left:0;z-index:1}
+.matrix tr.all-row td{background:var(--muted)!important;border-top:1px solid #CBD5E1}
+.matrix tr.all-row td:first-child{font-weight:600}
+.unit-sub{display:block;font-weight:400;font-size:12px;color:var(--muted-fg)}
+.matrix label.cell{display:flex;align-items:center;justify-content:center;width:100%;height:44px;cursor:pointer}
+.matrix label.cell:hover{background:rgba(38,47,104,.05)}
+.cb{appearance:none;-webkit-appearance:none;width:18px;height:18px;border:1px solid var(--primary);border-radius:var(--r-sm);background:var(--card);display:grid;place-items:center;margin:0;cursor:pointer;transition:background .12s}
+.cb::after{content:"";width:4px;height:9px;border:solid var(--primary-fg);border-width:0 2px 2px 0;transform:rotate(45deg) translate(-1px,-1px);opacity:0}
+.cb:checked{background:var(--primary)}
+.cb:checked::after{opacity:1}
+.cb:indeterminate{background:var(--primary);opacity:.55}
+.cb:indeterminate::after{opacity:1;width:9px;height:0;border-width:0 0 2px 0;transform:none}
+.cb:focus-visible{outline:none;box-shadow:var(--focus)}
+.matrix-legend{font-size:.8rem;color:var(--muted-fg);margin:8px 0 0}
+
+/* ---------- Conditional follow-ups (sky notice inside a muted panel) ---------- */
+.cond{background:var(--muted);border-radius:var(--radius);padding:24px 16px;display:flex;flex-direction:column;gap:20px;animation:fadein .2s ease}
+.cond-note{display:flex;align-items:center;gap:8px;background:var(--sky-bg);border:1px solid var(--sky-border);color:var(--sky-fg);border-radius:var(--radius);padding:8px 12px;font-size:.8rem;font-weight:500;margin:0}
+.cond-note svg{width:16px;height:16px}
+.cond .field.narrow{max-width:420px}
+.support{line-height:1.6}
+.support strong{display:block;font-size:14px;font-weight:600;margin-bottom:4px}
+@keyframes fadein{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+
+/* ---------- People (compact section cards) ---------- */
+.people{display:flex;flex-direction:column;gap:16px}
+.person-head{cursor:pointer}
+.person:not(.open) .person-head{border-radius:var(--r-xl)}
+.person-head:focus-visible{outline:none;box-shadow:var(--focus)}
+.person .chev svg{transition:transform .2s}
+.person.open .chev svg{transform:rotate(180deg)}
+.person-title{display:flex;flex-direction:column;row-gap:2px;min-width:0}
+.person:not(.open) .person-body{display:none}
+.seg{display:inline-flex;border:1px solid var(--input);border-radius:var(--r-md);overflow:hidden;background:var(--card);align-self:flex-start}
+.seg button{border:0;background:var(--card);height:36px;padding:0 20px;font-weight:500;font-size:14px;color:var(--fg)}
+.seg button+button{border-left:1px solid var(--input)}
+.seg button[aria-pressed="true"]{background:var(--primary);color:var(--primary-fg)}
+.seg button:focus-visible{outline:none;box-shadow:inset var(--focus)}
+
+/* ---------- Multi-select ---------- */
+.ms{position:relative}
+.ms-field{width:100%;min-height:40px;border:1px solid var(--input);border-radius:var(--r-md);background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 12px top 11px;padding:6px 36px 6px 12px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;text-align:left;outline:none}
+.ms-ph{color:var(--muted-fg)}
+.chip{display:inline-flex;align-items:center;gap:4px;background:var(--primary);color:var(--primary-fg);border-radius:var(--r-sm);padding:2px 4px 2px 8px;font-size:12px;font-weight:500;line-height:1.5}
+.chip-x{border:0;background:rgba(255,255,255,.18);color:#fff;width:16px;height:16px;border-radius:var(--r-sm);display:grid;place-items:center;padding:0;font-size:12px;line-height:1}
+.chip-x:hover{background:rgba(255,255,255,.32)}
+.pop{position:absolute;z-index:40;left:0;right:0;top:calc(100% + 4px);background:var(--card);border:1px solid var(--input);border-radius:var(--r-md);box-shadow:0 10px 24px rgba(2,8,23,.12);padding:4px;animation:fadein .12s ease}
+.ms-search{width:100%;height:36px;border:1px solid var(--input);border-radius:var(--r-md);padding:4px 12px;margin-bottom:4px;outline:none}
+.ms-search:focus{border-color:var(--primary)}
+.ms-list{max-height:260px;overflow:auto}
+.ms-opt{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--r-sm);cursor:pointer}
+.ms-opt:hover{background:var(--hover)}
+.ms-opt .cb{width:16px;height:16px}
+.ms-none{padding:8px;color:var(--muted-fg)}
+.ms-foot{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--input);margin-top:4px;padding:4px 4px 0;font-size:.8rem;color:var(--muted-fg)}
+.ms-foot button{border:0;background:none;color:var(--primary);font-weight:500;font-size:.8rem;padding:4px 6px;border-radius:var(--r-sm)}
+.ms-foot button:hover{background:var(--hover)}
+
+/* ---------- Month picker ---------- */
+.mp{position:relative;max-width:220px}
+.mp-field{height:36px;border:1px solid var(--input);border-radius:var(--r-md);background:var(--card);padding:4px 12px;min-width:160px;text-align:left;font-size:14px;outline:none}
+.mp-field.empty{color:var(--muted-fg)}
+.mp .pop{right:auto;width:256px;padding:12px}
+.mp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-weight:600}
+.mp-nav{width:28px;height:28px;border-radius:var(--r-md);border:1px solid var(--input);background:var(--card);color:var(--fg);display:grid;place-items:center;padding:0}
+.mp-nav:hover:not(:disabled){background:var(--hover)}
+.mp-nav:disabled{opacity:.35;cursor:default}
+.mp-nav svg{width:14px;height:14px}
+.mp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.mp-m{border:0;background:none;border-radius:var(--r-md);padding:7px 0;font-size:12px;font-weight:500;color:var(--muted-fg)}
+.mp-m:hover:not(:disabled){background:var(--hover);color:var(--fg)}
+.mp-m[aria-pressed="true"]{background:var(--primary);color:var(--primary-fg)}
+.mp-m:disabled{opacity:.3;cursor:default}
+.mp-clear{border:0;background:none;color:var(--primary);font-weight:500;font-size:.8rem;margin-top:8px;padding:4px}
+
+/* ---------- Dialog ---------- */
+.overlay{position:fixed;inset:0;background:rgba(2,8,23,.5);display:grid;place-items:center;padding:16px;z-index:100;animation:fadein .15s ease}
+.modal{background:var(--card);border-radius:var(--r-xl);box-shadow:0 0 0 1px var(--ring),0 20px 50px rgba(2,8,23,.2);width:100%;max-width:448px}
+.modal-body{padding:24px 24px 8px}
+.modal h2{margin:0 0 8px;font-size:18px;font-weight:600}
+.modal p{margin:0;color:var(--muted-fg)}
+.modal-foot{display:flex;gap:8px;justify-content:flex-end;padding:16px 24px 24px;flex-wrap:wrap}
+
+/* ---------- Confirmation card: max-w-2xl; header px-6 pb-6 pt-10; heading mt-6; text mt-2 ---------- */
+.confirm{width:100%;max-width:672px;margin:0 auto;background:var(--card);border-radius:var(--r-xl);box-shadow:0 0 0 1px var(--ring)}
+.confirm-head{padding:40px 24px 24px;text-align:center}
+.ok-icon{width:56px;height:56px;border-radius:999px;background:var(--emerald-bg);color:var(--emerald);display:grid;place-items:center;margin:0 auto}
+.ok-icon svg{width:28px;height:28px}
+.confirm h2{margin:24px 0 0;font-size:20px;font-weight:600}
+.confirm-head p{margin:8px auto 0;color:var(--muted-fg);max-width:520px}
+.confirm-body{padding:0 24px 24px;display:flex;flex-direction:column;gap:16px}
+.confirm-foot{display:flex;gap:8px;justify-content:center;padding:16px;border-top:1px solid var(--input);flex-wrap:wrap}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:var(--muted);border-radius:var(--radius);padding:12px;text-align:center}
+.stat b{display:block;font-size:20px;font-weight:600;line-height:1.2}
+.stat span{font-size:.8rem;color:var(--muted-fg)}
+details.payload{border:1px solid var(--input);border-radius:var(--radius);overflow:hidden}
+details.payload summary{cursor:pointer;padding:10px 12px;font-weight:500;list-style:none;display:flex;align-items:center;gap:8px}
+details.payload summary::-webkit-details-marker{display:none}
+details.payload summary::before{content:"";width:6px;height:6px;border:solid var(--muted-fg);border-width:0 2px 2px 0;transform:rotate(-45deg);transition:transform .15s}
+details.payload[open] summary::before{transform:rotate(45deg)}
+.payload-tools{display:flex;justify-content:space-between;align-items:center;padding:0 12px 8px;font-size:.8rem;color:var(--muted-fg);gap:8px}
+pre.json{margin:0;background:#0F1430;color:#E2E8F0;font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;padding:12px;overflow:auto;max-height:360px;white-space:pre;text-align:left}
+.j-k{color:#93C5FD}.j-s{color:#86EFAC}.j-n{color:#FCD34D}.j-b{color:#F9A8D4}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--primary);color:var(--primary-fg);padding:8px 16px;border-radius:var(--r-md);font-size:14px;font-weight:500;box-shadow:0 8px 24px rgba(2,8,23,.2);z-index:120;animation:fadein .15s ease}
+
+@media (max-width:639px){
+  .dept-header{padding:16px}
+  .dept-header img.patch,.patch-fallback{width:44px;height:44px}
+  .progress{padding:16px}
+  .tab{min-width:112px}
+  .demo-link{margin-left:0}
+  .step-head{flex-direction:column}
+  .step-foot{flex-wrap:wrap}
+  .step-foot .spacer{display:none}
+  .step-foot .btn{flex:1 1 auto}
+  .stats{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
 </head>
 <body>
 
-<div id="gate">
-  <div class="gate-card">
-
-    <div class="gate-title-block">
-      <div class="gate-title-eyebrow">National Fire Incident Reporting System</div>
-      <h1>Incident Viewer</h1>
-      <p>Select your state and filters below. No data loads until you confirm.</p>
-    </div>
-
-    <div class="gate-section">
-      <div class="gate-section-label">State</div>
-      <div class="field-group">
-        <select id="state-select">
-          <option value="">— Select State —</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="gate-section">
-      <div class="gate-section-label">
-        Years
-        <div class="select-links">
-          <button onclick="selectAllYears()">All</button>
-          <button onclick="clearAllYears()">None</button>
-        </div>
-      </div>
-      <div class="check-grid years-grid" id="gate-year-checks"></div>
-    </div>
-
-    <div class="gate-section">
-      <div class="gate-section-label">
-        Incident Types
-        <div class="select-links">
-          <button onclick="selectAllTypes()">All</button>
-          <button onclick="clearAllTypes()">None</button>
-        </div>
-      </div>
-      <div class="check-grid" id="gate-type-checks"></div>
-    </div>
-
-    <button id="go-btn" disabled onclick="launchApp()">View Incidents</button>
-    <p class="gate-note">NFIRS Public Data Release (PDR) Lite · 2020–2025</p>
+<header class="appbar">
+  <div class="appbar-in">
+    <span id="logoSlot"></span>
+    <span class="badge draft">Draft</span>
+    <span class="badge saved" id="savedBadge" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span id="savedText">Draft Saved</span></span>
   </div>
-</div>
+</header>
 
-<div id="app">
-  <div id="topbar">
-    <h2>NFIRS Incident Viewer</h2>
-    <span id="jurisdiction-badge"></span>
-    <div class="topbar-divider"></div>
-    <div id="topbar-year-toggles"></div>
-    <div class="topbar-divider"></div>
-    <div id="type-filter-wrapper">
-      <button id="type-filter-btn" onclick="toggleTypeDropdown()">Incident Types ▾</button>
-      <div id="type-dropdown">
-        <div class="type-dropdown-header">
-          <button onclick="selectAllTypes(); syncTypeDropdown(); applyFilters(); event.stopPropagation()">All</button>
-          <button onclick="clearAllTypes(); syncTypeDropdown(); applyFilters(); event.stopPropagation()">None</button>
+<div class="page">
+  <section class="dept-header" aria-label="Department">
+    <span id="patchSlot"></span>
+    <div>
+      <div class="dept-name" id="deptName"></div>
+      <div class="dept-id">NERIS Department ID: <span id="deptId"></span></div>
+    </div>
+  </section>
+
+  <div class="stack">
+    <nav class="progress" aria-label="Forms">
+      <div class="tabs" role="tablist" aria-label="Choose a form">
+        <button class="tab" role="tab" id="tab-incident" aria-controls="form-incident" data-form="incident"><span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></span><span class="tab-label">Incident Exposures</span></button>
+        <button class="tab" role="tab" id="tab-non" aria-controls="form-non" data-form="non"><span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span class="tab-label">Non-Incident</span></button>
+      </div>
+      <button class="demo-link" id="fillDemo" type="button">Fill with sample data</button>
+    </nav>
+
+    <main>
+      <!-- ================= INCIDENT EXPOSURES ================= -->
+      <section id="form-incident" class="step" role="tabpanel" aria-labelledby="tab-incident" hidden>
+        <div class="step-head">
+          <span class="step-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+          <div><h1 class="step-title">Health and Safety - Incident Exposures</h1><p class="step-desc" id="introIncident"></p></div>
         </div>
-        <div id="type-dropdown-items"></div>
-      </div>
-    </div>
-    <div class="topbar-divider"></div>
-    <input id="topbar-fdid-input" type="text" placeholder="Filter by FDID…" autocomplete="off" />
-    <button class="topbar-action-btn accent" id="fdid-apply-btn">Apply</button>
-    <button class="topbar-action-btn" id="fdid-clear-btn" style="display:none;" onclick="clearFdid()">✕ Clear</button>
-    <div class="topbar-divider"></div>
-    <button class="topbar-action-btn" id="export-btn" onclick="exportCSV()">↓ Export CSV</button>
-    <button class="topbar-action-btn" id="afg-btn" onclick="exportAFG()" style="display:none;">↓ AFG Report</button>
-    <span id="export-status-bar"></span>
-    <button id="change-btn" onclick="resetToGate()">Change State</button>
-  </div>
+        <div class="step-body">
+          <div id="bannerIncident"></div>
+          <div class="section">
+            <div class="section-head"><span class="section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg></span>
+              <div><h2 class="sec-title">Incident</h2><p class="section-sub">Units are pulled from the incident record.</p></div></div>
+            <div class="section-body">
+              <div class="field" data-ek="incId" style="max-width:640px">
+                <label class="label" for="incId"><span class="req-star">*</span>NERIS Incident ID<span class="req-tag">Required</span></label>
+                <div class="row">
+                  <input class="input" id="incId" style="flex:1;min-width:220px" autocomplete="off" spellcheck="false">
+                  <button class="btn btn-primary" id="loadUnits" type="button">Load Units</button>
+                </div>
+              </div>
+              <div id="unitsInfo"></div>
+            </div>
+          </div>
+          <div class="section">
+            <div class="section-head"><span class="section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+              <div><h2 class="sec-title">Physical Exposures</h2><p class="section-sub">Check every exposure that applies to each unit.</p></div></div>
+            <div class="section-body"><div id="physArea"></div><div id="physCond"></div></div>
+          </div>
+          <div class="section">
+            <div class="section-head"><span class="section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span>
+              <div><h2 class="sec-title">Critical Incident Exposures</h2><p class="section-sub">Check every type that applies to each unit.</p></div></div>
+            <div class="section-body"><div id="critArea"></div><div id="critCond"></div></div>
+          </div>
+        </div>
+        <div class="step-foot">
+          <button class="btn btn-danger" type="button" data-action="reset">Reset Form</button>
+          <span class="spacer"></span>
+          <button class="btn btn-outline" type="button" data-action="save"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save Draft</button>
+          <button class="btn btn-primary" type="button" data-action="submit">Submit</button>
+        </div>
+      </section>
 
-  <div id="main">
-    <div id="viewDiv">
-      <div id="loading-overlay">
-        <div class="spinner"></div>
-        Loading incident data…
-      </div>
-    </div>
+      <!-- ================= NON-INCIDENT ================= -->
+      <section id="form-non" class="step" role="tabpanel" aria-labelledby="tab-non" hidden>
+        <div class="step-head">
+          <span class="step-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+          <div><h1 class="step-title">Health and Safety - Non-Incident</h1><p class="step-desc" id="introNon"></p></div>
+        </div>
+        <div class="step-body">
+          <div id="bannerNon"></div>
+          <div class="field narrow" data-ek="count">
+            <label class="label" for="count"><span class="req-star">*</span>Number of Personnel Involved<span class="req-tag">Required</span></label>
+            <input class="input" id="count" type="number" inputmode="numeric" min="1" max="20" placeholder="0">
+          </div>
+          <div class="people" id="people" hidden></div>
+        </div>
+        <div class="step-foot">
+          <button class="btn btn-danger" type="button" data-action="reset">Reset Form</button>
+          <span class="spacer"></span>
+          <button class="btn btn-outline" type="button" data-action="save"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save Draft</button>
+          <button class="btn btn-primary" type="button" data-action="submit">Submit</button>
+        </div>
+      </section>
 
-    <div id="sidebar">
-      <div class="sidebar-header">Summary</div>
-      <div id="stats-panel">
-        <div class="stat-section">Incidents</div>
-        <div class="stat-row"><span class="label">Total Incidents</span><span class="value" id="stat-total">—</span></div>
-        <div id="chart-inner" style="margin-top:10px;"></div>
-        <div class="stat-section">Casualties</div>
-        <div class="stat-row"><span class="label">Firefighter Deaths</span><span class="value" id="stat-ff-death">—</span></div>
-        <div class="stat-row"><span class="label">Civilian Deaths</span><span class="value" id="stat-oth-death">—</span></div>
-        <div class="stat-section">Mutual Aid</div>
-        <div class="stat-row"><span class="label">Aid Received</span><span class="value" id="stat-aid-recv">—</span></div>
-        <div class="stat-row"><span class="label">Aid Given</span><span class="value" id="stat-aid-given">—</span></div>
-      </div>
-
-    </div>
+      <!-- ================= CONFIRMATION ================= -->
+      <section id="confirm" class="confirm" aria-live="polite" hidden></section>
+    </main>
   </div>
 </div>
 
 <script>
+/* =====================================================================
+   CONFIG – edit these for your demo
+   ===================================================================== */
+const CONFIG = {
+  departmentName: "Metro West FD — Wildwood, MO",
+  departmentNerisId: "FD24027214",        // stands in for the logged-in user's department
+  logoSrc: "assets/logo.png",             // optional; text wordmark shows if missing
+  patchSrc: "assets/patch.png",           // optional; initials badge shows if missing
+  wordmark: "NERIS",
+  introIncident: "<strong>Report exposures for each unit on this incident.</strong> Enter the NERIS Incident ID to load the responding units, then check every exposure that applies. A unit can have more than one.",
+  introNon: "<strong>Report casualties and exposures that happened outside an incident</strong>, such as during training, station work, or travel. Add one entry for each person involved.",
+  // Units "pulled from the incident" for the demo. IDs are built from the incident's department.
+  demoUnits: [
+    ["S001U001","L1","Ladder 1"],["S001U002","R1","Rescue 1"],["S001U003","M1","Medic 1"],
+    ["S002U001","L2","Ladder 2"],["S002U002","S2","Support 2"],["S002U003","M2","Medic 2"]
+  ]
+};
 
-const FEATURE_SERVICES = [
-  { year: 2020, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_Service_2020/FeatureServer/0" },
-  { year: 2021, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_2021/FeatureServer/0" },
-  { year: 2022, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_Service_2022/FeatureServer/0" },
-  { year: 2023, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_Service_2023/FeatureServer/0" },
-  { year: 2024, url: "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_Service_2024/FeatureServer/0" },
-  {"year": 2025, "url": "https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/NFIRS_PDR_Light_Service_2025/FeatureServer/0"},
-];
+/* Code lists – generated from the OpenAPI specs (incident v0.4.0, non-incident v0.2.0) */
+const CODES = {"PhysicalExposureType":[["PRODUCTS_OF_COMBUSTION","Products of Combustion"],["FIREFIGHTING_FOAM_AFFF","Firefighting Foam (AFFF)"],["CHEMICAL_HAZMAT","Chemical / Hazmat"],["COMMUNICABLE_DISEASE","Communicable Disease"],["FLOOD_WATER","Flood Water"],["OVERHAUL","Overhaul"]],"CombustionSourceType":[["STRUCTURE_RESIDENTIAL","Structure (Residential)"],["STRUCTURE_COMMERCIAL","Structure (Commercial)"],["VEHICLE_COMBUSTION_ENGINE","Vehicle (Combustion Engine)"],["VEHICLE_ELECTRIC","Vehicle (Electric)"],["VEGETATION","Vegetation"]],"DecontaminationAction":[["CLEAN_CAB","Clean Cab"],["DRY","Dry"],["WET","Wet"],["PPE_LAUNDER","PPE Launder"],["ON_SCENE_SKIN_CLEANING","On-Scene Skin Cleaning"],["SHOWER_IMMEDIATELY_POST_RESPONSE","Shower Immediately Post-Response"]],"CriticalIncidentType":[["ACUTE_SEVERE_TRAUMA","Acute / Severe Trauma"],["MASS_CASUALTY_INCIDENT","Mass Casualty Incident"],["CUMULATIVE_INCIDENT_LOAD","Cumulative Incident Load"],["PSYCHOLOGICALLY_TRAUMATIC_INCIDENT","Psychologically Traumatic Incident"]],"Gender":[["MALE","Male"],["FEMALE","Female"],["TRANSGENDER_MALE_FEMALE_TO_MALE","Transgender Male (Female to Male)"],["TRANSGENDER_FEMALE_MALE_TO_FEMALE","Transgender Female (Male to Female)"],["OTHER_GENDER_IDENTITY","Other, neither exclusively male or female"],["UNKNOWN","Unknown (Unable to be determined)"]],"Race":[["AMERICAN_INDIAN_ALASKA_NATIVE","American Indian or Alaska Native"],["ASIAN","Asian"],["BLACK_AFRICAN_AMERICAN","Black or African American"],["MIDDLE_EASTERN_NORTH_AFRICAN","Middle Eastern or North African"],["HISPANIC_LATINO","Hispanic or Latino"],["NATIVE_HAWAIIAN_PACIFIC_ISLANDER","Native Hawaiian or Pacific Islander"],["WHITE","White"]],"Activity":[["ADMINISTRATIVE_WORK","Administrative work"],["AT_REST","At rest"],["COMMUNICATIONS_WORK","Communications work"],["COOKING_ACTIVITY","Cooking activity"],["DRIVING_RIDING_DEPARTMENT_VEHICLE","Driving or riding in department vehicle"],["DRIVING_RIDING_OTHER_VEHICLE","Driving or riding in other vehicle"],["EQUIPMENT_MAINTENANCE","Equipment maintenance"],["INSPECTION","Inspection"],["INVESTIGATION","Investigation"],["MOVING_ABOUT_STATION_ALARM","Moving about station, alarm sounding"],["MOVING_ABOUT_STATION_NORMAL","Moving about station, normal activity"],["PHYSICAL_FITNESS_ACTIVITY","Physical fitness activity"],["STATION_MAINTENANCE","Station maintenance"],["TRAINING_ACTIVITY_DRILL","Training activity or drill"],["VEHICLE_MAINTENANCE","Vehicle maintenance"],["OTHER","Other"]],"CasualtyCause":[["CONTACT_WITH_OBJECT_BY_PERSONNEL","Contact with object (personnel moved into/onto)"],["EXPOSURE_NON_CHEMICAL","Exposure to non-chemical hazard (radiological, biological, etc.)"],["EXPOSURE_CHEMICAL","Exposure to chemical hazard"],["FALL","Fall"],["JUMP","Jump"],["SLIP_TRIP","Slip or trip"],["STRUCK_ASSAULTED_OBJECT","Struck or assaulted by object"],["STRUCK_ASSAULTED_PERSON_ANIMAL","Struck or assaulted by a person or animal"],["EXTREME_WEATHER","Extreme weather"],["MEDICAL_EVENT","Medical event (seizure, etc.)"],["OVEREXERTION_STRAIN","Overexertion or strain"],["STRUCK_BY_VEHICLE","Struck by vehicle"],["TRAPPED_CAUGHT","Trapped / Caught"],["VEHICLE_COLLISION_ACCIDENT","Vehicle Collision or Accident"],["OTHER","Other"]],"CasualtyType":[["ABRASION","Abrasion"],["ALCOHOL_IMPAIRMENT","Alcohol impairment"],["ALLERGIC_REACTION","Allergic reaction"],["AMPUTATION","Amputation"],["BURNS_CHEMICAL","Burns, chemical"],["BURNS_ELECTRIC","Burns, electric"],["BURNS_SCALD","Burns, scald"],["BURNS_THERMAL","Burns, thermal"],["CARDIAC_ARREST","Cardiac arrest"],["CARDIAC_SYMPTOMS","Cardiac symptoms"],["CHILLS","Chills"],["CONTUSION_BRUISE","Contusion or bruise"],["CONVULSION_SEIZURE","Convulsion or seizure"],["CRUSHING","Crushing"],["CUT_LACERATION","Cut or laceration"],["DEHYDRATION","Dehydration"],["DIFFICULTY_BREATHING","Difficulty breathing, shortness of breath"],["DISLOCATION","Dislocation"],["DISORIENTATION","Disorientation"],["DIZZINESS_FAINTING_WEAKNESS","Dizziness, fainting, weakness"],["DROWNING","Drowning"],["DRUG_OVERDOSE_DRUG_RELATED","Drug overdose or drug-related"],["ELECTRIC_SHOCK","Electric shock"],["EYE_TRAUMA","Eye trauma"],["FEVER","Fever"],["FOREIGN_BODY_OBSTRUCTION","Foreign body obstruction"],["FRACTURE","Fracture"],["FROSTBITE","Frostbite"],["GUNSHOT_PROJECTILE_WOUND","Gunshot or projectile wound"],["HAZARDOUS_FUMES_INHALATION","Hazardous fumes inhalation"],["HEAT_STROKE","Heat stroke"],["HEMORRHAGING_INTERNAL_BLEEDING","Hemorrhaging, internal bleeding"],["INTERNAL_TRAUMA","Internal trauma"],["NAUSEA","Nausea"],["NUMBNESS_TINGLING_PARESTHESIA","Numbness, tingling, or paresthesia"],["PAIN_ONLY","Pain only"],["PARALYSIS","Paralysis"],["POISON","Poison"],["RESPIRATORY_ARREST","Respiratory arrest"],["SHOCK","Shock"],["SMOKE_INHALATION","Smoke inhalation"],["STAB_PUNCTURE_WOUND","Stab or puncture wound"],["STRAIN_SPRAIN","Strain or sprain"],["STROKE","Stroke"],["SWELLING","Swelling"],["UNCONSCIOUS","Unconscious"],["VOMITING","Vomiting"],["OTHER","Other"]],"Severity":[["MINOR","Minor"],["MODERATE","Moderate"],["SEVERE","Severe"],["LIFE_THREATENING","Life threatening"],["DEATH","Death"]],"Disposition":[["NO_CARE_NEEDED","No care needed"],["FIRST_AID_ONLY","First aid only"],["RESIDENCE","Residence"],["OCCUPATIONAL_HEALTH_CLINIC","Occupational health clinic"],["DOCTORS_OFFICE","Doctor's office"],["HOSPITAL","Hospital"],["MORGUE_FUNERAL_HOME","Morgue or funeral home"]],"ExposureType":[["DERMAL","Dermal"],["HAZMAT","Hazardous material"],["HEAT","Heat / Flame"],["INFECTIOUS_DISEASE","Infectious Disease"],["SMOKE","Smoke"],["RESPIRATORY","Respiratory"],["INGESTION","Ingestion"],["PUNCTURE","Puncture"],["OCULAR","Ocular"],["EMOTIONAL_PSYCHOLOGICAL_DISTRESS","Emotional or psychological distress"],["OTHER","Other"]],"FoamType":[["AFFF","AFFF (Aqueous Film Forming Foam Concentrate)"],["AR_AFFF","AR-AFFF (Alcohol Resistant Foam Concentrate)"],["FFFP","FFFP (Film-Forming Fluoroprotein Foam Concentrate)"],["HIGH_EXPANSION","High Expansion Foam Concentrate"],["CLASS_A","Class A Foam Concentrate"],["SYNTHETIC_S_TYPE","Synthetic Foam Concentrate"],["OTHER","Other"]]};
 
-const INC_TYPES = [
-  { code: "1", label: "Fire" },
-  { code: "2", label: "Overpressure / Explosion" },
-  { code: "3", label: "Rescue & EMS" },
-  { code: "4", label: "Hazardous Condition" },
-  { code: "5", label: "Service Call" },
-  { code: "6", label: "Good Intent" },
-  { code: "7", label: "False Alarm" },
-  { code: "8", label: "Severe Weather" },
-  { code: "9", label: "Special Incident" },
-];
-
-const FIELD_STATE    = "STATE";
-const FIELD_FDID     = "FDID";
-const FIELD_INC_TYPE = "INC_TYPE";
-const MAP_OUT_FIELDS = ["OBJECTID", FIELD_STATE, FIELD_FDID, FIELD_INC_TYPE, "INC_DATE"];
-
-const EXPORT_FIELDS = [
-  "INCIDENT_KEY", "STATE", "FDID", "FD_NAME", "INC_DATE", "INC_NO", "EXP_NO",
-  "NUM_MILE", "STREET_PRE", "STREETNAME", "STREETTYPE", "STREETSUF", "APT_NO",
-  "CITY", "STATE_ID", "ZIP5", "INC_TYPE", "AID", "ALARM", "ARRIVAL", "LU_CLEAR",
-  "SHIFT", "ACT_TAK1", "ACT_TAK2", "ACT_TAK3", "SUP_APP", "EMS_APP", "OTH_APP",
-  "SUP_PER", "EMS_PER", "OTH_PER", "PROP_LOSS", "CONT_LOSS", "PROP_VAL", "CONT_VAL",
-  "FF_DEATH", "OTH_DEATH", "FF_INJ", "OTH_INJ", "HAZ_REL", "MIXED_USE", "PROP_USE",
-  "NUM_UNIT", "BLDG_INVOL", "ACRES_BURN", "AREA_ORIG", "HEAT_SOURC", "FIRST_IGN",
-  "CAUSE_IGN", "FACT_IGN_1", "FACT_IGN_2", "EQUIP_INV", "CAUSE_CODE", "MOB_TYPE",
-  "STRUC_TYPE", "STRUC_STAT", "BLDG_ABOVE", "TOT_SQ_FT", "FIRE_ORIG", "FIRE_SPRD",
-  "DETECTOR", "DET_TYPE", "DET_OPERAT", "DET_EFFECT", "DET_FAIL", "AES_PRES",
-  "AES_TYPE", "AES_OPER", "NO_SPR_OP", "AES_FAIL", "FIRE_CAUSE", "HEAT_SOURCE_WF",
-  "EQ_INV_IGN", "MOB_PROP", "ACRES_BURN_WF"
-];
-
-let map, view;
-let activeLayers       = [];
-let activeYears        = new Set([2025]);
-let activeTypes        = new Set(INC_TYPES.map(t => t.code));
-let currentStateAbbr   = "";
-let currentSidebarFdid = "";
-
-const STATES = [
-  ["AL","Alabama"],["AK","Alaska"],["AZ","Arizona"],["AR","Arkansas"],
-  ["CA","California"],["CO","Colorado"],["CT","Connecticut"],["DE","Delaware"],
-  ["FL","Florida"],["GA","Georgia"],["HI","Hawaii"],["ID","Idaho"],
-  ["IL","Illinois"],["IN","Indiana"],["IA","Iowa"],["KS","Kansas"],
-  ["KY","Kentucky"],["LA","Louisiana"],["ME","Maine"],["MD","Maryland"],
-  ["MA","Massachusetts"],["MI","Michigan"],["MN","Minnesota"],["MS","Mississippi"],
-  ["MO","Missouri"],["MT","Montana"],["NE","Nebraska"],["NV","Nevada"],
-  ["NH","New Hampshire"],["NJ","New Jersey"],["NM","New Mexico"],["NY","New York"],
-  ["NC","North Carolina"],["ND","North Dakota"],["OH","Ohio"],["OK","Oklahoma"],
-  ["OR","Oregon"],["PA","Pennsylvania"],["RI","Rhode Island"],["SC","South Carolina"],
-  ["SD","South Dakota"],["TN","Tennessee"],["TX","Texas"],["UT","Utah"],
-  ["VT","Vermont"],["VA","Virginia"],["WA","Washington"],["WV","West Virginia"],
-  ["WI","Wisconsin"],["WY","Wyoming"]
-];
-
-(function buildGateControls() {
-  const sel = document.getElementById("state-select");
-  STATES.forEach(([abbr, name]) => {
-    const opt = document.createElement("option");
-    opt.value = abbr;
-    opt.textContent = name;
-    sel.appendChild(opt);
+/* =====================================================================
+   Helpers
+   ===================================================================== */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const LABEL = {}; for (const k in CODES) LABEL[k] = Object.fromEntries(CODES[k]);
+const lbl = (list, code) => LABEL[list][code] || code;
+const INCIDENT_RE = /^FD\d{8}\|[^|]+\|\d+$/;
+const ICON = {
+  bulb: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg>',
+  alert: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+  chevDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>',
+  left: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>',
+  right: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>',
+  cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+};
+function store(key, val) { try { if (val === undefined) return JSON.parse(localStorage.getItem(key) || "null"); if (val === null) localStorage.removeItem(key); else localStorage.setItem(key, JSON.stringify(val)); } catch (e) { return null; } }
+function toast(msg) { const t = document.createElement("div"); t.className = "toast"; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2200); }
+function isoWithOffset(date, time) {
+  const d = new Date(`${date}T${time.length === 5 ? time + ":00" : time}`);
+  const off = -d.getTimezoneOffset(), sign = off >= 0 ? "+" : "-", a = Math.abs(off);
+  return `${date}T${time.length === 5 ? time + ":00" : time}${sign}${String(Math.floor(a / 60)).padStart(2, "0")}:${String(a % 60).padStart(2, "0")}`;
+}
+function highlightJSON(obj) {
+  return esc(JSON.stringify(obj, null, 2)).replace(/(&quot;(?:[^&]|&(?!quot;))*?&quot;)(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d+)?/g, (m, str, colon, bool) => {
+    if (str) return colon ? `<span class="j-k">${str}</span>${colon}` : `<span class="j-s">${str}</span>`;
+    if (bool) return `<span class="j-b">${m}</span>`;
+    return `<span class="j-n">${m}</span>`;
   });
-  sel.addEventListener("change", updateGoBtn);
-
-  const yearGrid = document.getElementById("gate-year-checks");
-  FEATURE_SERVICES.forEach(svc => {
-    yearGrid.appendChild(makeCheckItem(
-      `year-${svc.year}`, String(svc.year), activeYears.has(svc.year),
-      () => { activeYears.has(svc.year) ? activeYears.delete(svc.year) : activeYears.add(svc.year); updateGoBtn(); }
-    ));
-  });
-
-  const typeGrid = document.getElementById("gate-type-checks");
-  INC_TYPES.forEach(t => {
-    typeGrid.appendChild(makeCheckItem(
-      `gate-type-${t.code}`, t.label, activeTypes.has(t.code),
-      () => { activeTypes.has(t.code) ? activeTypes.delete(t.code) : activeTypes.add(t.code); updateGoBtn(); }
-    ));
-  });
-})();
-
-function makeCheckItem(id, labelText, checked, onChange) {
-  const item = document.createElement("label");
-  item.className = "check-item" + (checked ? " checked" : "");
-  item.htmlFor = id;
-
-  const input = document.createElement("input");
-  input.type = "checkbox";
-  input.id = id;
-  input.checked = checked;
-
-  const box = document.createElement("span");
-  box.className = "check-box";
-
-  const text = document.createElement("span");
-  text.textContent = labelText;
-
-  input.addEventListener("change", () => {
-    item.classList.toggle("checked", input.checked);
-    onChange();
-  });
-
-  item.appendChild(input);
-  item.appendChild(box);
-  item.appendChild(text);
-  return item;
 }
 
-function selectAllYears() {
-  FEATURE_SERVICES.forEach(svc => {
-    activeYears.add(svc.year);
-    const input = document.getElementById(`year-${svc.year}`);
-    if (input) { input.checked = true; input.closest(".check-item").classList.add("checked"); }
-  });
-  updateGoBtn();
+/* ---------- Header ---------- */
+function mountImg(slot, src, cls, fallback) {
+  const img = new Image(); img.className = cls; img.alt = "";
+  img.onload = () => { slot.innerHTML = ""; slot.appendChild(img); };
+  img.onerror = () => { slot.innerHTML = fallback; };
+  slot.innerHTML = fallback; img.src = src;
 }
+mountImg($("#logoSlot"), CONFIG.logoSrc, "logo", `<span class="wordmark">${esc(CONFIG.wordmark)}</span>`);
+mountImg($("#patchSlot"), CONFIG.patchSrc, "patch", `<span class="patch-fallback" aria-hidden="true">${esc(CONFIG.departmentName.split(/\s+/).filter(w => /^[A-Z]/.test(w)).slice(0, 2).map(w => w[0]).join(""))}</span>`);
+$("#deptName").textContent = CONFIG.departmentName;
+$("#deptId").textContent = CONFIG.departmentNerisId;
+$("#introIncident").innerHTML = CONFIG.introIncident;
+$("#introNon").innerHTML = CONFIG.introNon;
 
-function clearAllYears() {
-  activeYears.clear();
-  FEATURE_SERVICES.forEach(svc => {
-    const input = document.getElementById(`year-${svc.year}`);
-    if (input) { input.checked = false; input.closest(".check-item").classList.remove("checked"); }
-  });
-  updateGoBtn();
-}
+/* ---------- Multi-select component ---------- */
+let openPop = null;
+function closePop() { if (openPop) { openPop.close(); openPop = null; } }
+document.addEventListener("mousedown", e => { if (openPop && !openPop.root.contains(e.target)) closePop(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && openPop) { const f = openPop.focusEl; closePop(); f && f.focus(); } });
 
-function selectAllTypes() {
-  INC_TYPES.forEach(t => {
-    activeTypes.add(t.code);
-    const gInput = document.getElementById(`gate-type-${t.code}`);
-    if (gInput) { gInput.checked = true; gInput.closest(".check-item").classList.add("checked"); }
-  });
-  updateGoBtn();
-  syncTypeDropdown();
-}
-
-function clearAllTypes() {
-  activeTypes.clear();
-  INC_TYPES.forEach(t => {
-    const gInput = document.getElementById(`gate-type-${t.code}`);
-    if (gInput) { gInput.checked = false; gInput.closest(".check-item").classList.remove("checked"); }
-  });
-  updateGoBtn();
-  syncTypeDropdown();
-}
-
-function updateGoBtn() {
-  const state = document.getElementById("state-select").value;
-  const ready = state && activeYears.size > 0 && activeTypes.size > 0;
-  document.getElementById("go-btn").disabled = !ready;
-}
-
-function buildTypeDropdown() {
-  const container = document.getElementById("type-dropdown-items");
-  container.innerHTML = "";
-  INC_TYPES.forEach(t => {
-    const item = document.createElement("label");
-    item.className = "type-dropdown-item";
-
-    const input = document.createElement("input");
-    input.type = "checkbox";
-    input.id = `topbar-type-${t.code}`;
-    input.checked = activeTypes.has(t.code);
-    input.addEventListener("change", () => {
-      activeTypes.has(t.code) ? activeTypes.delete(t.code) : activeTypes.add(t.code);
-      updateTypeFilterBtn();
-      applyFilters();
-    });
-
-    const span = document.createElement("span");
-    span.textContent = `${t.code} – ${t.label}`;
-
-    item.appendChild(input);
-    item.appendChild(span);
-    container.appendChild(item);
-  });
-  updateTypeFilterBtn();
-}
-
-function syncTypeDropdown() {
-  INC_TYPES.forEach(t => {
-    const input = document.getElementById(`topbar-type-${t.code}`);
-    if (input) input.checked = activeTypes.has(t.code);
-  });
-  updateTypeFilterBtn();
-}
-
-function updateTypeFilterBtn() {
-  const btn = document.getElementById("type-filter-btn");
-  if (!btn) return;
-  if (activeTypes.size === INC_TYPES.length) {
-    btn.textContent = "Incident Types ▾";
-    btn.classList.remove("has-filter");
-  } else {
-    btn.textContent = `Types (${activeTypes.size}/${INC_TYPES.length}) ▾`;
-    btn.classList.add("has-filter");
+function MultiSelect(root, { list, value, placeholder = "Select All That Apply", onChange }) {
+  const codes = CODES[list]; let sel = [...value]; let q = "";
+  root.classList.add("ms");
+  const field = document.createElement("button"); field.type = "button"; field.className = "ms-field"; field.setAttribute("aria-haspopup", "listbox");
+  root.appendChild(field);
+  let pop = null;
+  function drawField() {
+    field.innerHTML = sel.length
+      ? sel.map(c => `<span class="chip">${esc(lbl(list, c))}<span class="chip-x" role="button" aria-label="Remove ${esc(lbl(list, c))}" data-x="${esc(c)}">×</span></span>`).join("")
+      : `<span class="ms-ph">${esc(placeholder)}</span>`;
+    field.setAttribute("aria-expanded", pop ? "true" : "false");
   }
+  function drawList() {
+    const ul = $(".ms-list", pop); const ql = q.trim().toLowerCase();
+    const items = codes.filter(([c, l]) => !ql || l.toLowerCase().includes(ql));
+    ul.innerHTML = items.length ? items.map(([c, l]) => `<label class="ms-opt"><input type="checkbox" class="cb" value="${esc(c)}" ${sel.includes(c) ? "checked" : ""}>${esc(l)}</label>`).join("") : `<div class="ms-none">No matches</div>`;
+    $(".ms-count", pop).textContent = `${sel.length} selected`;
+  }
+  function set(next) { sel = codes.map(([c]) => c).filter(c => next.includes(c)); drawField(); if (pop) drawList(); onChange([...sel]); }
+  function open() {
+    closePop();
+    pop = document.createElement("div"); pop.className = "pop"; pop.setAttribute("role", "listbox"); pop.setAttribute("aria-multiselectable", "true");
+    pop.innerHTML = `${codes.length > 8 ? '<input class="ms-search" placeholder="Search…" aria-label="Search options">' : ""}<div class="ms-list"></div><div class="ms-foot"><span class="ms-count"></span><span><button type="button" data-clear>Clear</button><button type="button" data-done>Done</button></span></div>`;
+    root.appendChild(pop); drawList(); drawField();
+    const s = $(".ms-search", pop); if (s) { s.addEventListener("input", () => { q = s.value; drawList(); }); s.focus(); }
+    pop.addEventListener("change", e => { if (!e.target.matches(".ms-opt .cb")) return; e.stopPropagation(); const c = e.target.value; set(e.target.checked ? [...sel, c] : sel.filter(x => x !== c)); });
+    $("[data-clear]", pop).onclick = () => set([]);
+    $("[data-done]", pop).onclick = () => { closePop(); field.focus(); };
+    openPop = { root, focusEl: field, close() { pop && pop.remove(); pop = null; q = ""; drawField(); } };
+  }
+  field.addEventListener("click", e => {
+    const x = e.target.closest("[data-x]");
+    if (x) { e.stopPropagation(); set(sel.filter(c => c !== x.dataset.x)); return; }
+    pop ? closePop() : open();
+  });
+  drawField();
 }
 
-function toggleTypeDropdown() {
-  document.getElementById("type-dropdown").classList.toggle("open");
+/* ---------- Month picker ---------- */
+function MonthPicker(root, { value, onChange }) {
+  const now = new Date(), curY = now.getFullYear(), curM = now.getMonth() + 1;
+  const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+  let val = value || ""; let year = val ? +val.slice(0, 4) : 1990; let pop = null;
+  root.classList.add("mp");
+  const field = document.createElement("button"); field.type = "button"; field.className = "mp-field";
+  root.appendChild(field);
+  const drawField = () => { field.textContent = val ? `${val.slice(5)} / ${val.slice(0, 4)}` : "MM / YYYY"; field.classList.toggle("empty", !val); };
+  function draw() {
+    pop.innerHTML = `<div class="mp-head"><button type="button" class="mp-nav" data-y="-1" aria-label="Previous year" ${year <= 1900 ? "disabled" : ""}>${ICON.left}</button><span>${year}</span><button type="button" class="mp-nav" data-y="1" aria-label="Next year" ${year >= curY ? "disabled" : ""}>${ICON.right}</button></div>
+      <div class="mp-grid">${MONTHS.map((m, i) => { const mm = String(i + 1).padStart(2, "0"); const dis = (year === curY && i + 1 > curM) || (year === 1900 && i === 0); return `<button type="button" class="mp-m" data-m="${mm}" aria-pressed="${val === `${year}-${mm}`}" ${dis ? "disabled" : ""}>${m}</button>`; }).join("")}</div>
+      ${val ? '<button type="button" class="mp-clear">Clear</button>' : ""}`;
+  }
+  function open() {
+    closePop(); pop = document.createElement("div"); pop.className = "pop"; root.appendChild(pop); draw();
+    pop.addEventListener("click", e => {
+      const y = e.target.closest("[data-y]"), m = e.target.closest("[data-m]");
+      if (y) { year = Math.min(curY, Math.max(1900, year + +y.dataset.y)); draw(); }
+      else if (m) { val = `${year}-${m.dataset.m}`; drawField(); onChange(val); closePop(); field.focus(); }
+      else if (e.target.closest(".mp-clear")) { val = ""; drawField(); onChange(""); closePop(); }
+    });
+    openPop = { root, focusEl: field, close() { pop && pop.remove(); pop = null; } };
+  }
+  field.addEventListener("click", () => pop ? closePop() : open());
+  drawField();
+}
+
+/* ---------- Errors ---------- */
+function clearErrors(scope) { $$(".err", scope).forEach(e => e.remove()); $$(".has-error", scope).forEach(e => e.classList.remove("has-error")); }
+function showError(scope, key, msg) {
+  const el = $(`[data-ek="${CSS.escape(key)}"]`, scope); if (!el) return null;
+  el.classList.add("has-error");
+  const d = document.createElement("div"); d.className = "err"; d.innerHTML = ICON.alert + esc(msg);
+  (el.classList.contains("matrix-wrap") ? el.parentNode.insertBefore(d, el.nextSibling) : el.appendChild(d));
+  return el;
+}
+function dropError(scope, key) { const el = $(`[data-ek="${CSS.escape(key)}"]`, scope); if (!el) return; el.classList.remove("has-error"); const n = el.classList.contains("matrix-wrap") ? el.nextElementSibling : $(".err", el); if (n && n.classList.contains("err")) n.remove(); }
+function banner(id, n) { $(id).innerHTML = n ? `<div class="banner" role="alert">${ICON.alert}<span>Fix ${n} ${n === 1 ? "item" : "items"} below before submitting.</span></div>` : ""; }
+
+/* =====================================================================
+   INCIDENT EXPOSURES
+   ===================================================================== */
+const incRoot = $("#form-incident");
+let inc = blankInc();
+function blankInc() { return { incidentId: "", units: [], phys: {}, comb: "", decon: {}, crit: {} }; }
+const sets = (map, id) => (map[id] ||= []);
+
+function loadUnitsFor(id) {
+  const dept = id.slice(0, 10);
+  return CONFIG.demoUnits.map(([suffix, rid, name]) => ({ id: dept + suffix, rid, name }));
+}
+const anyPoc = () => inc.units.some(u => (inc.phys[u.id] || []).includes("PRODUCTS_OF_COMBUSTION"));
+function normalizeInc() {
+  if (typeof inc.comb !== "string") inc.comb = "";
+  for (const u of inc.units) {
+    const p = inc.phys[u.id] || [];
+    if (!p.length) delete inc.decon[u.id];
+  }
+  if (!anyPoc()) inc.comb = "";
+}
+function matrixHTML(key, list, units, map, allLabel) {
+  const codes = CODES[list];
+  const head = `<tr><th scope="col"><span class="sr-only">Unit</span></th>${codes.map(([, l]) => `<th scope="col">${esc(l)}</th>`).join("")}</tr>`;
+  const rows = units.map(u => `<tr><td>${esc(u.name)}<span class="unit-sub">${esc(u.rid)} · ${esc(u.id)}</span></td>${codes.map(([c, l]) => `<td><label class="cell"><input type="checkbox" class="cb" data-m="${key}" data-u="${esc(u.id)}" data-c="${c}" data-k="${key}|${esc(u.id)}|${c}" aria-label="${esc(u.name)}: ${esc(l)}" ${(map[u.id] || []).includes(c) ? "checked" : ""}></label></td>`).join("")}</tr>`).join("");
+  const all = `<tr class="all-row"><td>${esc(allLabel)}</td>${codes.map(([c, l]) => { const n = units.filter(u => (map[u.id] || []).includes(c)).length; return `<td><label class="cell"><input type="checkbox" class="cb" data-m="${key}" data-all="1" data-c="${c}" data-k="${key}|ALL|${c}" aria-label="${esc(allLabel)}: ${esc(l)}" ${n && n === units.length ? "checked" : ""} ${n && n < units.length ? 'data-ind="1"' : ""}></label></td>`; }).join("")}</tr>`;
+  const multi = units.length > 1;
+  return `<div><div class="matrix-wrap" data-ek="mx-${key}"><table class="matrix">${head ? `<thead>${head}</thead>` : ""}<tbody>${rows}${multi ? all : ""}</tbody></table></div>
+    <p class="matrix-legend">Check all that apply.${multi ? ` "${esc(allLabel)}" checks that column for every unit.` : ""}</p></div>`;
+}
+const MATRICES = {
+  phys: { list: "PhysicalExposureType", map: () => inc.phys, units: () => inc.units, all: "All units exposed" },
+  decon: { list: "DecontaminationAction", map: () => inc.decon, units: () => inc.units.filter(u => (inc.phys[u.id] || []).length), all: "All exposed units" },
+  crit: { list: "CriticalIncidentType", map: () => inc.crit, units: () => inc.units, all: "All units exposed" }
+};
+function renderIncident() {
+  normalizeInc();
+  const active = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.k : null;
+  $("#incId").value = inc.incidentId;
+  $("#incId").placeholder = `e.g. ${CONFIG.departmentNerisId}|IN20261122A7|1763840000`;
+  const has = inc.units.length > 0;
+  $("#unitsInfo").innerHTML = has
+    ? `<div class="info"><span>${inc.units.length} units loaded from the incident:</span>${inc.units.map(u => `<span class="chip-unit">${esc(u.name)}</span>`).join("")}</div>`
+    : `<div class="info">Units are pulled from the incident record. <button type="button" class="demo-link" id="useDemoId" style="margin:0">Use a demo incident ID</button></div>`;
+  const empty = `<div class="empty-state">Enter a NERIS Incident ID and load its units to start.</div>`;
+  $("#physArea").innerHTML = has ? matrixHTML("phys", "PhysicalExposureType", inc.units, inc.phys, MATRICES.phys.all) : empty;
+  $("#critArea").innerHTML = has ? matrixHTML("crit", "CriticalIncidentType", inc.units, inc.crit, MATRICES.crit.all) : empty;
+
+  // Conditional: combustion source + decontamination
+  const exposed = MATRICES.decon.units();
+  const poc = inc.units.filter(u => (inc.phys[u.id] || []).includes("PRODUCTS_OF_COMBUSTION"));
+  let cond = "";
+  if (poc.length) {
+    cond += `<p class="cond-note">${ICON.bulb}You are being asked the following because you selected Products of Combustion.</p>
+      <div class="field narrow" data-ek="comb"><label class="label" for="comb"><span class="req-star">*</span>Combustion Source Type<span class="req-tag">Required</span></label>
+        <select class="select ${inc.comb ? "" : "empty"}" id="comb" data-comb="1"><option value="">Select</option>${CODES.CombustionSourceType.map(([c, l]) => `<option value="${c}" ${inc.comb === c ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></div>`;
+  }
+  if (exposed.length) {
+    cond += `${poc.length ? "" : `<p class="cond-note">${ICON.bulb}You are being asked the following because you selected a physical exposure.</p>`}
+      <h3 class="section-title">Decontamination Actions</h3>${matrixHTML("decon", "DecontaminationAction", exposed, inc.decon, MATRICES.decon.all)}`;
+  }
+  $("#physCond").innerHTML = cond ? `<div class="cond">${cond}</div>` : "";
+
+  const anyCrit = inc.units.some(u => (inc.crit[u.id] || []).length);
+  $("#critCond").innerHTML = anyCrit ? `<div class="cond" role="note"><p class="cond-note">${ICON.bulb}You are seeing this message because a critical incident exposure was selected.</p>
+    <div class="support"><strong>Support is available</strong>If you or someone exposed on this incident needs help, free, confidential, 24/7 support is available. For suicide and crisis support, call or text <b>988</b>. For first responder support specific to fire and EMS professionals, contact the Fire/EMS Helpline (Share the Load) at <b>1-888-731-FIRE (3473)</b>.</div></div>` : "";
+
+  $$("[data-ind]", incRoot).forEach(cb => cb.indeterminate = true);
+  if (active) { const el = $(`[data-k="${CSS.escape(active)}"]`, incRoot); el && el.focus(); }
+}
+function doLoadUnits() {
+  const id = $("#incId").value.trim(); inc.incidentId = id;
+  dropError(incRoot, "incId");
+  if (!INCIDENT_RE.test(id)) { showError(incRoot, "incId", "Enter a valid NERIS Incident ID, e.g. FD24027214|IN20261122A7|1763840000."); return; }
+  const fresh = loadUnitsFor(id);
+  const same = inc.units.length && inc.units[0].id.slice(0, 10) === fresh[0].id.slice(0, 10);
+  if (!same) { inc.units = fresh; inc.phys = {}; inc.comb = ""; inc.decon = {}; inc.crit = {}; }
+  dirty(); renderIncident(); toast(`${inc.units.length} units loaded from the incident`);
+}
+$("#loadUnits").addEventListener("click", doLoadUnits);
+$("#incId").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); doLoadUnits(); } });
+$("#incId").addEventListener("input", e => { inc.incidentId = e.target.value.trim(); dropError(incRoot, "incId"); dirty(); });
+incRoot.addEventListener("click", e => { if (e.target.id === "useDemoId") { $("#incId").value = `${CONFIG.departmentNerisId}|IN20261122A7|1763840000`; doLoadUnits(); } });
+incRoot.addEventListener("change", e => {
+  const t = e.target;
+  if (t.dataset.m) {
+    const M = MATRICES[t.dataset.m], map = M.map(), c = t.dataset.c;
+    if (t.dataset.all) {
+      for (const u of M.units()) { const s = sets(map, u.id); const i = s.indexOf(c); if (t.checked && i < 0) s.push(c); if (!t.checked && i >= 0) s.splice(i, 1); }
+    } else {
+      const s = sets(map, t.dataset.u); const i = s.indexOf(c); if (t.checked && i < 0) s.push(c); if (!t.checked && i >= 0) s.splice(i, 1);
+    }
+    dropError(incRoot, "mx-" + t.dataset.m);
+    dirty(); renderIncident();
+  } else if (t.dataset.comb) {
+    inc.comb = t.value;
+    t.classList.toggle("empty", !t.value); dropError(incRoot, "comb"); dirty();
+  }
+});
+function validateIncident() {
+  const errs = [];
+  if (!INCIDENT_RE.test(inc.incidentId)) errs.push(["incId", "Enter a valid NERIS Incident ID."]);
+  else if (!inc.units.length) errs.push(["incId", "Load the incident's units before submitting."]);
+  if (anyPoc() && !inc.comb) errs.push(["comb", "Combustion Source Type is required when Products of Combustion is selected."]);
+  return errs;
+}
+function payloadIncident() {
+  const order = (list, arr) => CODES[list].map(([c]) => c).filter(c => (arr || []).includes(c));
+  const out = { neris_incident_id: inc.incidentId };
+  if (inc.comb) out.combustion_source_type = inc.comb;
+  out.units = inc.units.map(u => {
+      const o = { unit_neris_id: u.id, reported_unit_id: u.rid, physical_exposures: order("PhysicalExposureType", inc.phys[u.id]) };
+      o.decontamination_actions = order("DecontaminationAction", inc.decon[u.id]);
+      o.critical_incident_exposures = order("CriticalIncidentType", inc.crit[u.id]);
+      return o;
+    }).filter(o => o.physical_exposures.length || o.decontamination_actions.length || o.critical_incident_exposures.length);
+  return out;
+}
+function sampleIncident() {
+  inc = blankInc(); inc.incidentId = `${CONFIG.departmentNerisId}|IN20261122A7|1763840000`; inc.units = loadUnitsFor(inc.incidentId);
+  const [L1, R1, M1, L2, S2] = inc.units.map(u => u.id);
+  Object.assign(inc.phys, { [L1]: ["PRODUCTS_OF_COMBUSTION", "OVERHAUL"], [R1]: ["PRODUCTS_OF_COMBUSTION", "FIREFIGHTING_FOAM_AFFF", "CHEMICAL_HAZMAT"], [M1]: ["COMMUNICABLE_DISEASE"], [L2]: ["PRODUCTS_OF_COMBUSTION"], [S2]: ["FLOOD_WATER"] });
+  inc.comb = "STRUCTURE_RESIDENTIAL";
+  Object.assign(inc.decon, { [L1]: ["CLEAN_CAB", "PPE_LAUNDER", "SHOWER_IMMEDIATELY_POST_RESPONSE"], [R1]: ["WET", "PPE_LAUNDER", "ON_SCENE_SKIN_CLEANING"], [M1]: ["CLEAN_CAB"], [L2]: ["DRY", "CLEAN_CAB"], [S2]: ["WET"] });
+  Object.assign(inc.crit, { [R1]: ["ACUTE_SEVERE_TRAUMA", "PSYCHOLOGICALLY_TRAUMATIC_INCIDENT"], [M1]: ["ACUTE_SEVERE_TRAUMA"] });
+}
+
+/* =====================================================================
+   NON-INCIDENT
+   ===================================================================== */
+const nonRoot = $("#form-non");
+let non = blankNon();
+function blankNon() { return { count: "", people: [] }; }
+function blankPerson() { return { open: true, birth: "", gender: "", race: "", date: "", time: "", activity: "", cause: "", ctypes: [], severity: "", disposition: "", etypes: [], foam: "", foamTypes: [] }; }
+const TODAY = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; })();
+
+function selectHTML(i, f, list, val) {
+  return `<select class="select ${val ? "" : "empty"}" id="p${i}-${f}" data-p="${i}" data-f="${f}"><option value="">Select</option>${CODES[list].map(([c, l]) => `<option value="${c}" ${val === c ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
+}
+function personSummary(p) {
+  const bits = [];
+  if (p.ctypes.length) bits.push(`${p.ctypes.length} casualty type${p.ctypes.length > 1 ? "s" : ""}`);
+  if (p.etypes.length) bits.push(`${p.etypes.length} exposure type${p.etypes.length > 1 ? "s" : ""}`);
+  return bits.join(" · ");
+}
+function personHTML(p, i) {
+  return `<div class="person section ${p.open ? "open" : ""}" data-person="${i}">
+    <button type="button" class="person-head section-head" data-toggle="${i}" aria-expanded="${p.open}"><span class="chev section-icon">${ICON.chevDown}</span><span class="person-title"><span class="sec-title">Person ${i + 1}</span><span class="person-sum section-sub">${esc(personSummary(p) || "No casualty or exposure entered yet")}</span></span></button>
+    <div class="person-body section-body">
+      <div class="group">
+        <h3 class="section-title">Personal Information</h3>
+        <div class="grid">
+          <div class="field"><span class="label">${ICON.cal}Birth Month</span><div data-mp="${i}"></div></div>
+          <div class="field"><label class="label" for="p${i}-gender">Gender</label>${selectHTML(i, "gender", "Gender", p.gender)}</div>
+          <div class="field"><label class="label" for="p${i}-race">Race</label>${selectHTML(i, "race", "Race", p.race)}</div>
+        </div>
+      </div>
+      <div class="group">
+        <h3 class="section-title">Date and Time of Casualty or Exposure</h3>
+        <div class="panel" data-ek="p${i}:dt">
+          <div class="grid">
+            <div class="field"><label class="label" for="p${i}-date">${ICON.cal}<span><span class="req-star">*</span> Date</span></label><input class="input" type="date" id="p${i}-date" data-p="${i}" data-f="date" max="${TODAY}" value="${esc(p.date)}"></div>
+            <div class="field"><label class="label" for="p${i}-time">${ICON.clock}<span><span class="req-star">*</span> Time</span><span class="req-tag">24-hour</span></label><input class="input" type="time" step="1" id="p${i}-time" data-p="${i}" data-f="time" value="${esc(p.time)}"></div>
+          </div>
+        </div>
+      </div>
+      <div class="group">
+        <h3 class="section-title">Casualty Information</h3>
+        <div class="grid">
+          <div class="field"><label class="label" for="p${i}-activity">Activity During Casualty</label>${selectHTML(i, "activity", "Activity", p.activity)}</div>
+          <div class="field"><label class="label" for="p${i}-cause">Cause of Casualty</label>${selectHTML(i, "cause", "CasualtyCause", p.cause)}</div>
+          <div class="field span-2" data-ek="p${i}:ctypes"><span class="label">Type of Casualty</span><div data-ms="${i}:ctypes"></div></div>
+          <div class="field"><label class="label" for="p${i}-severity">Severity of Casualty</label>${selectHTML(i, "severity", "Severity", p.severity)}</div>
+          <div class="field"><label class="label" for="p${i}-disposition">Disposition of / Response to Casualty</label>${selectHTML(i, "disposition", "Disposition", p.disposition)}</div>
+        </div>
+      </div>
+      <div class="group">
+        <h3 class="section-title">Exposures Information</h3>
+        <div class="grid">
+          <div class="field span-2" data-ek="p${i}:etypes"><span class="label">Types of Exposures Experienced</span><div data-ms="${i}:etypes"></div></div>
+        </div>
+        <div data-foam="${i}"></div>
+      </div>
+    </div>
+  </div>`;
+}
+function renderFoam(i) {
+  const p = non.people[i], host = $(`[data-foam="${i}"]`, nonRoot); if (!host) return;
+  if (p.activity !== "TRAINING_ACTIVITY_DRILL") { host.innerHTML = ""; return; }
+  host.innerHTML = `<div class="cond"><p class="cond-note">${ICON.bulb}You are being asked the following because the activity was Training activity or drill.</p>
+    <div class="field" data-ek="p${i}:foam"><span class="label" id="p${i}-foamq">Was there a firefighting foam exposure?</span>
+      <div class="seg" role="group" aria-labelledby="p${i}-foamq"><button type="button" data-foambtn="${i}" data-v="yes" aria-pressed="${p.foam === "yes"}">Yes</button><button type="button" data-foambtn="${i}" data-v="no" aria-pressed="${p.foam === "no"}">No</button></div></div>
+    ${p.foam === "yes" ? `<div class="field narrow" data-ek="p${i}:foamTypes"><span class="label"><span class="req-star">*</span>Type of Foam(s) Exposed To</span><div data-ms="${i}:foamTypes"></div></div>` : ""}</div>`;
+  mountMulti(host);
+}
+const MS_LIST = { ctypes: "CasualtyType", etypes: "ExposureType", foamTypes: "FoamType" };
+function mountMulti(scope) {
+  $$("[data-ms]", scope).forEach(el => {
+    if (el.dataset.mounted) return; el.dataset.mounted = "1";
+    const [i, f] = el.dataset.ms.split(":");
+    MultiSelect(el, { list: MS_LIST[f], value: non.people[+i][f], onChange: v => {
+      non.people[+i][f] = v; dropError(nonRoot, `p${i}:${f}`);
+      if (f !== "foamTypes") { dropError(nonRoot, `p${i}:ctypes`); dropError(nonRoot, `p${i}:etypes`); }
+      updateSummary(+i); dirty();
+    } });
+  });
+}
+function updateSummary(i) { const s = $(`[data-person="${i}"] .person-sum`, nonRoot); if (s) s.textContent = personSummary(non.people[i]) || "No casualty or exposure entered yet"; }
+function renderNon() {
+  $("#count").value = non.count;
+  const box = $("#people");
+  box.hidden = !non.people.length;
+  box.innerHTML = non.people.map(personHTML).join("");
+  mountMulti(box);
+  $$("[data-mp]", box).forEach(el => { const i = +el.dataset.mp; MonthPicker(el, { value: non.people[i].birth, onChange: v => { non.people[i].birth = v; dirty(); } }); });
+  non.people.forEach((_, i) => renderFoam(i));
+}
+$("#count").addEventListener("change", e => {
+  let n = parseInt(e.target.value, 10);
+  dropError(nonRoot, "count");
+  if (!Number.isFinite(n) || n < 1) { n = 0; }
+  n = Math.min(n, 20);
+  non.count = n || ""; e.target.value = non.count;
+  if (n === non.people.length) return;
+  while (non.people.length < n) non.people.push(blankPerson());
+  non.people.length = n;
+  dirty(); renderNon();
+});
+nonRoot.addEventListener("click", e => {
+  const tg = e.target.closest("[data-toggle]");
+  if (tg) { const i = +tg.dataset.toggle; const p = non.people[i]; p.open = !p.open; const el = tg.closest(".person"); el.classList.toggle("open", p.open); tg.setAttribute("aria-expanded", p.open); return; }
+  const fb = e.target.closest("[data-foambtn]");
+  if (fb) { const i = +fb.dataset.foambtn; const p = non.people[i]; p.foam = p.foam === fb.dataset.v ? "" : fb.dataset.v; if (p.foam !== "yes") p.foamTypes = []; dirty(); renderFoam(i); const b = $(`[data-foambtn="${i}"][data-v="${fb.dataset.v}"]`, nonRoot); b && b.focus(); }
+});
+nonRoot.addEventListener("change", e => {
+  const t = e.target; if (t.dataset.p === undefined || !t.dataset.f) return;
+  const i = +t.dataset.p, f = t.dataset.f, p = non.people[i];
+  p[f] = t.value; if (t.tagName === "SELECT") t.classList.toggle("empty", !t.value);
+  if (f === "date" || f === "time") dropError(nonRoot, `p${i}:dt`);
+  if (f === "activity") { if (t.value !== "TRAINING_ACTIVITY_DRILL") { p.foam = ""; p.foamTypes = []; } renderFoam(i); }
+  if (["activity", "cause", "severity", "disposition"].includes(f)) dropError(nonRoot, `p${i}:ctypes`);
+  dirty();
+});
+function casualtyStarted(p) { return !!(p.activity || p.cause || p.severity || p.disposition || p.ctypes.length); }
+function validateNon() {
+  const errs = [];
+  if (!non.people.length) errs.push(["count", "Enter how many people were involved."]);
+  non.people.forEach((p, i) => {
+    if (!p.date || !p.time) errs.push([`p${i}:dt`, "Date and time are required."]);
+    else if (p.date > TODAY) errs.push([`p${i}:dt`, "Date can't be in the future."]);
+    if (!p.ctypes.length && !p.etypes.length) {
+      if (casualtyStarted(p)) errs.push([`p${i}:ctypes`, "Select at least one casualty type to report this casualty."]);
+      else { errs.push([`p${i}:ctypes`, "Report a casualty type or an exposure type for this person."]); errs.push([`p${i}:etypes`, "Report a casualty type or an exposure type for this person."]); }
+    } else if (casualtyStarted(p) && !p.ctypes.length) errs.push([`p${i}:ctypes`, "Select at least one casualty type to report this casualty."]);
+    if (p.foam === "yes" && !p.foamTypes.length) errs.push([`p${i}:foamTypes`, "Select at least one foam type."]);
+    if (p.foam && !p.etypes.length && !errs.some(x => x[0] === `p${i}:etypes`)) errs.push([`p${i}:etypes`, "Select at least one exposure type to record the foam answer."]);
+  });
+  return errs;
+}
+function payloadNon() {
+  const order = (list, arr) => CODES[list].map(([c]) => c).filter(c => arr.includes(c));
+  return {
+    department_neris_id: CONFIG.departmentNerisId,
+    personnel: non.people.map(p => {
+      const o = {};
+      const person = {}; if (p.birth) person.birth_month_year = p.birth; if (p.gender) person.gender = p.gender; if (p.race) person.race = p.race;
+      if (Object.keys(person).length) o.person = person;
+      o.casualty_exposure_datetime = isoWithOffset(p.date, p.time);
+      if (p.ctypes.length) {
+        const c = {}; if (p.activity) c.activity = p.activity; if (p.cause) c.cause = p.cause;
+        c.casualty_types = order("CasualtyType", p.ctypes); if (p.severity) c.severity = p.severity; if (p.disposition) c.disposition = p.disposition;
+        o.casualty = c;
+      }
+      if (p.etypes.length || p.foam) {
+        const x = {}; if (p.etypes.length) x.exposure_types = order("ExposureType", p.etypes);
+        if (p.foam && p.activity === "TRAINING_ACTIVITY_DRILL") { x.foam_exposure = p.foam === "yes"; if (p.foam === "yes") x.foam_types = order("FoamType", p.foamTypes); }
+        if (x.exposure_types) o.exposure = x;
+      }
+      return o;
+    })
+  };
+}
+function sampleNon() {
+  const d = new Date(Date.now() - 3 * 864e5); const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  non = { count: 2, people: [
+    { ...blankPerson(), open: true, birth: "1986-06", gender: "MALE", race: "WHITE", date: day, time: "10:30:00", activity: "TRAINING_ACTIVITY_DRILL", cause: "EXPOSURE_CHEMICAL", ctypes: ["BURNS_CHEMICAL", "EYE_TRAUMA"], severity: "MODERATE", disposition: "OCCUPATIONAL_HEALTH_CLINIC", etypes: ["DERMAL", "OCULAR"], foam: "yes", foamTypes: ["AFFF"] },
+    { ...blankPerson(), open: false, birth: "1994-11", gender: "FEMALE", race: "HISPANIC_LATINO", date: day, time: "14:05:00", activity: "STATION_MAINTENANCE", cause: "OVEREXERTION_STRAIN", ctypes: ["STRAIN_SPRAIN"], severity: "MINOR", disposition: "FIRST_AID_ONLY", etypes: ["RESPIRATORY"] }
+  ] };
+}
+
+/* =====================================================================
+   Shared: tabs, drafts, submit, reset
+   ===================================================================== */
+const FORMS = {
+  incident: { root: incRoot, key: "hs-demo-incident", banner: "#bannerIncident", validate: validateIncident, payload: payloadIncident, render: renderIncident,
+    get: () => inc, set: v => { inc = Object.assign(blankInc(), v); }, blank: () => { inc = blankInc(); }, sample: sampleIncident,
+    endpoint: "POST /incident-exposures",
+    stats: p => [[p.units.length, "units with exposures"], [p.units.reduce((n, u) => n + u.physical_exposures.length, 0), "physical exposures"], [p.units.reduce((n, u) => n + u.critical_incident_exposures.length, 0), "critical incident exposures"]] },
+  non: { root: nonRoot, key: "hs-demo-nonincident", banner: "#bannerNon", validate: validateNon, payload: payloadNon, render: renderNon,
+    get: () => non, set: v => { non = Object.assign(blankNon(), v); }, blank: () => { non = blankNon(); }, sample: sampleNon,
+    endpoint: "POST /non-incident-exposures",
+    stats: p => [[p.personnel.length, p.personnel.length === 1 ? "person" : "people"], [p.personnel.filter(x => x.casualty).length, "casualties"], [p.personnel.filter(x => x.exposure).length, "exposures"]] }
+};
+let current = "incident";
+const savedAt = { incident: null, non: null };
+function updateSavedBadge() { const t = savedAt[current]; $("#savedBadge").hidden = !t; if (t) $("#savedText").textContent = `Draft Saved ${t}`; }
+function dirty() { savedAt[current] = null; updateSavedBadge(); }
+function show(name) {
+  closePop(); current = name; $("#confirm").hidden = true;
+  for (const k in FORMS) { FORMS[k].root.hidden = k !== name; $(`#tab-${k === "incident" ? "incident" : "non"}`).setAttribute("aria-selected", k === name); }
+  updateSavedBadge();
+  if (location.hash !== "#" + name) history.replaceState(null, "", "#" + name);
+}
+$$(".tab").forEach(t => t.addEventListener("click", () => show(t.dataset.form)));
+$("#fillDemo").addEventListener("click", () => { show(current); const F = FORMS[current]; F.sample(); clearErrors(F.root); banner(F.banner, 0); F.render(); dirty(); toast("Sample data filled in"); });
+
+function modal(html, onMount) {
+  closePop();
+  const ov = document.createElement("div"); ov.className = "overlay";
+  ov.innerHTML = `<div class="modal" role="dialog" aria-modal="true">${html}</div>`;
+  document.body.appendChild(ov);
+  const prev = document.activeElement;
+  const close = () => { ov.remove(); document.removeEventListener("keydown", onKey); prev && prev.focus && prev.focus(); };
+  const onKey = e => { if (e.key === "Escape") close(); };
+  document.addEventListener("keydown", onKey);
+  ov.addEventListener("mousedown", e => { if (e.target === ov) close(); });
+  onMount && onMount(ov, close);
+  const f = $(".modal-foot .btn:last-child", ov); f && f.focus();
+  return close;
 }
 
 document.addEventListener("click", e => {
-  const wrapper = document.getElementById("type-filter-wrapper");
-  if (wrapper && !wrapper.contains(e.target)) {
-    document.getElementById("type-dropdown")?.classList.remove("open");
+  const b = e.target.closest("[data-action]"); if (!b) return;
+  const F = FORMS[current], act = b.dataset.action;
+  if (act === "save") {
+    store(F.key, F.get());
+    savedAt[current] = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    updateSavedBadge(); toast("Draft saved on this device");
+  }
+  if (act === "reset") {
+    modal(`<div class="modal-body"><h2>Reset this form?</h2><p>This clears every answer on the form and its saved draft. It can't be undone.</p></div>
+      <div class="modal-foot"><button class="btn btn-outline" data-m="cancel">Cancel</button><button class="btn btn-danger-solid" data-m="ok">Reset Form</button></div>`, (ov, close) => {
+      $('[data-m="cancel"]', ov).onclick = close;
+      $('[data-m="ok"]', ov).onclick = () => { F.blank(); store(F.key, null); savedAt[current] = null; updateSavedBadge(); clearErrors(F.root); banner(F.banner, 0); F.render(); close(); window.scrollTo({ top: 0, behavior: "smooth" }); };
+    });
+  }
+  if (act === "submit") {
+    clearErrors(F.root);
+    const errs = F.validate();
+    if (current === "non") errs.forEach(([k]) => { const m = /^p(\d+):/.exec(k); if (m && !non.people[+m[1]].open) { non.people[+m[1]].open = true; const el = $(`[data-person="${m[1]}"]`, nonRoot); el.classList.add("open"); $(".person-head", el).setAttribute("aria-expanded", "true"); } });
+    let first = null; errs.forEach(([k, m]) => { const el = showError(F.root, k, m); first ||= el; });
+    banner(F.banner, errs.length);
+    if (errs.length) { (first || $(F.banner)).scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+    const p = F.payload();
+    closePop(); F.root.hidden = true;
+    const c = $("#confirm"); c.hidden = false;
+    c.innerHTML = `<div class="confirm-head"><div class="ok-icon">${ICON.check}</div><h2>Report submitted</h2>
+        <p>This is a demo, so nothing was sent. Below is the exact payload the form would send to <code>${esc(F.endpoint)}</code>.</p></div>
+      <div class="confirm-body">
+        <div class="stats">${F.stats(p).map(([n, l]) => `<div class="stat"><b>${n}</b><span>${esc(l)}</span></div>`).join("")}</div>
+        <details class="payload"><summary>View API payload (JSON)</summary><div class="payload-tools"><span>Matches the OpenAPI schema for this endpoint.</span><button class="btn btn-outline" style="height:28px;padding:0 10px;font-size:12px" data-c="copy">Copy</button></div><pre class="json">${highlightJSON(p)}</pre></details>
+      </div>
+      <div class="confirm-foot"><button class="btn btn-outline" data-c="back">Back to Form</button><button class="btn btn-primary" data-c="new">Start New Report</button></div>`;
+    const back = () => { c.hidden = true; F.root.hidden = false; };
+    $('[data-c="back"]', c).onclick = back;
+    $('[data-c="new"]', c).onclick = () => { F.blank(); store(F.key, null); savedAt[current] = null; updateSavedBadge(); banner(F.banner, 0); F.render(); back(); window.scrollTo({ top: 0 }); };
+    $('[data-c="copy"]', c).onclick = async ev => { try { await navigator.clipboard.writeText(JSON.stringify(p, null, 2)); ev.target.textContent = "Copied"; } catch (_) { ev.target.textContent = "Copy failed"; } };
+    window.scrollTo({ top: 0 }); $('[data-c="new"]', c).focus({ preventScroll: true });
   }
 });
 
-function buildTypeClause() {
-  if (activeTypes.size === INC_TYPES.length) return null;
-  const clauses = [...activeTypes].map(code => `${FIELD_INC_TYPE} LIKE '${code}%'`);
-  return `(${clauses.join(" OR ")})`;
-}
-
-function buildDefinitionExpression() {
-  const parts = [`${FIELD_STATE} = '${currentStateAbbr}'`];
-  if (currentSidebarFdid) parts.push(`${FIELD_FDID} = '${currentSidebarFdid}'`);
-  const typeClause = buildTypeClause();
-  if (typeClause) parts.push(typeClause);
-  return parts.join(" AND ");
-}
-
-async function launchApp() {
-  const selectedOpt  = document.getElementById("state-select").selectedOptions[0];
-  currentStateAbbr   = selectedOpt?.value || "";
-  const stateName    = selectedOpt?.textContent || currentStateAbbr;
-  currentSidebarFdid = "";
-
-  const params = new URLSearchParams({ state: currentStateAbbr });
-  history.replaceState({}, "", "?" + params.toString());
-
-  document.getElementById("gate").classList.add("hidden");
-  document.getElementById("app").classList.add("visible");
-
-  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-  document.getElementById("jurisdiction-badge").textContent = stateName;
-
-  // Wire FDID apply button
-  document.getElementById("fdid-apply-btn").onclick = () => {
-    currentSidebarFdid = document.getElementById("topbar-fdid-input").value.trim();
-    document.getElementById("jurisdiction-badge").textContent =
-      currentSidebarFdid ? `${stateName} · FDID ${currentSidebarFdid}` : stateName;
-    document.getElementById("afg-btn").style.display = currentSidebarFdid ? "inline-block" : "none";
-    document.getElementById("fdid-clear-btn").style.display = currentSidebarFdid ? "inline-block" : "none";
-    applyFilters();
-  };
-
-  // Also apply on Enter key in FDID input
-  document.getElementById("topbar-fdid-input").onkeydown = e => {
-    if (e.key === "Enter") document.getElementById("fdid-apply-btn").click();
-  };
-
-  buildTopbarYearChips();
-  buildTypeDropdown();
-
-  if (!map) {
-    await initMap();
-  } else {
-    applyFilters();
-  }
-}
-
-function buildTopbarYearChips() {
-  const container = document.getElementById("topbar-year-toggles");
-  container.innerHTML = "";
-  FEATURE_SERVICES.forEach(svc => {
-    const chip = document.createElement("button");
-    chip.className = "topbar-chip" + (activeYears.has(svc.year) ? " active" : "");
-    chip.textContent = svc.year;
-    chip.onclick = () => {
-      activeYears.has(svc.year) ? activeYears.delete(svc.year) : activeYears.add(svc.year);
-      chip.classList.toggle("active", activeYears.has(svc.year));
-      applyFilters();
-    };
-    container.appendChild(chip);
-  });
-}
-
-function applyFilters() {
-  const defExp = buildDefinitionExpression();
-  document.getElementById("loading-overlay").classList.remove("hidden");
-
-  activeLayers.forEach(layer => {
-    const layerYear = parseInt(layer.title.replace("NFIRS ", ""));
-    const shouldBeActive = activeYears.has(layerYear);
-    const isOnMap = map.layers.includes(layer);
-    if (shouldBeActive && !isOnMap) map.layers.add(layer);
-    else if (!shouldBeActive && isOnMap) map.layers.remove(layer);
-    layer.definitionExpression = defExp;
-  });
-
-  const activeOnMap = activeLayers.filter(l => map.layers.includes(l));
-  if (activeOnMap.length) {
-    view.whenLayerView(activeOnMap[activeOnMap.length - 1]).then(lv => {
-      const handle = lv.watch("updating", updating => {
-        if (!updating) { handle.remove(); document.getElementById("loading-overlay").classList.add("hidden"); }
-      });
-      if (!lv.updating) document.getElementById("loading-overlay").classList.add("hidden");
-    }).catch(() => { document.getElementById("loading-overlay").classList.add("hidden"); });
-  } else {
-    document.getElementById("loading-overlay").classList.add("hidden");
-  }
-
-  loadSummaryStats(defExp);
-}
-async function initMap() {
-  const defExp = buildDefinitionExpression();
-
-  const [Map, MapView, FeatureLayer] = await Promise.all([
-    loadModule("esri/Map"),
-    loadModule("esri/views/MapView"),
-    loadModule("esri/layers/FeatureLayer"),
-  ]);
-
-  map = new Map({ basemap: "gray-vector" });
-
-  view = new MapView({
-    container: "viewDiv",
-    map,
-    zoom: 6,
-    center: [-98.5, 39.5]
-  });
-
-  await view.when();
-
-  activeLayers = FEATURE_SERVICES.map(svc => new FeatureLayer({
-    url: svc.url,
-    title: `NFIRS ${svc.year}`,
-    definitionExpression: defExp,
-    outFields: MAP_OUT_FIELDS,
-    visible: true,
-    minScale: 0,
-    maxScale: 0,
-    featureReduction: {
-      type: "cluster",
-      clusterRadius: "60px",
-      popupTemplate: { title: "Cluster", content: "{cluster_count} incidents" }
-    },
-    renderer: {
-      type: "simple",
-      symbol: {
-        type: "simple-marker",
-        size: 6,
-        color: [18, 44, 73, 200],
-        outline: { color: [255, 255, 255, 128], width: 0.5 }
-      }
-    }
-  }));
-
-  const initialLayers = activeLayers.filter(l =>
-    activeYears.has(parseInt(l.title.replace("NFIRS ", "")))
-  );
-  initialLayers.forEach(l => map.layers.add(l));
-
-  await new Promise(r => setTimeout(r, 1500));
-
-  document.getElementById("loading-overlay").classList.add("hidden");
-  zoomToJurisdiction();
-  loadSummaryStats(defExp);
-}
-
-async function zoomToJurisdiction() {
-  const layer = activeLayers.find(l => map.layers.includes(l));
-  if (!layer) return;
-  try {
-    const result = await layer.queryExtent({ where: layer.definitionExpression });
-    if (result?.extent) view.goTo(result.extent.expand(1.2));
-  } catch (e) {}
-}
-
-async function loadSummaryStats(definitionExpression) {
-  ["stat-total","stat-ff-death","stat-oth-death","stat-aid-recv","stat-aid-given"]
-    .forEach(id => document.getElementById(id).textContent = "…");
-
-  document.getElementById("chart-inner").innerHTML =
-    `<div style="color:#aaa;font-size:12px;padding:8px 0">Loading…</div>`;
-
-  let total = 0, ffDeath = 0, othDeath = 0, aidRecv = 0, aidGiven = 0;
-
-  // Per-type counts for bar chart
-  const typeCounts = {};
-  INC_TYPES.forEach(t => { typeCounts[t.code] = 0; });
-
-  const visibleLayers = activeLayers.filter(l => map.layers.includes(l));
-  if (!visibleLayers.length) {
-    ["stat-total","stat-ff-death","stat-oth-death","stat-aid-recv","stat-aid-given"]
-      .forEach(id => document.getElementById(id).textContent = "0");
-    document.getElementById("chart-inner").innerHTML = "";
-    return;
-  }
-
-  const emsCodes = "3,30,300,31,311,32,320,321,322,323,324";
-
-  await Promise.all(visibleLayers.map(async layer => {
-    // Summary stats + per-type counts all in parallel
-    const typeCountQueries = INC_TYPES
-      .filter(t => activeTypes.has(t.code))
-      .map(t => layer.queryFeatureCount({
-        where: `${definitionExpression} AND ${FIELD_INC_TYPE} LIKE '${t.code}%'`
-      }).then(n => ({ code: t.code, n })));
-
-    const [countRes, ffRes, othRes, aidRecvRes, aidGivenRes, ...typeResults] = await Promise.all([
-      layer.queryFeatureCount({ where: definitionExpression }),
-      layer.queryFeatures({ where: definitionExpression, outStatistics: [{ statisticType: "sum", onStatisticField: "FF_DEATH", outStatisticFieldName: "total" }] }),
-      layer.queryFeatures({ where: definitionExpression, outStatistics: [{ statisticType: "sum", onStatisticField: "OTH_DEATH", outStatisticFieldName: "total" }] }),
-      layer.queryFeatureCount({ where: `${definitionExpression} AND AID IN ('1', '2')` }),
-      layer.queryFeatureCount({ where: `${definitionExpression} AND AID IN ('3', '4')` }),
-      ...typeCountQueries
-    ]);
-
-    total    += countRes;
-    ffDeath  += (ffRes.features[0]?.attributes?.total  || 0);
-    othDeath += (othRes.features[0]?.attributes?.total || 0);
-    aidRecv  += aidRecvRes;
-    aidGiven += aidGivenRes;
-
-    typeResults.forEach(r => {
-      typeCounts[r.code] = (typeCounts[r.code] || 0) + r.n;
-    });
-  }));
-
-  document.getElementById("stat-total").textContent     = total.toLocaleString();
-  document.getElementById("stat-ff-death").textContent  = ffDeath.toLocaleString();
-  document.getElementById("stat-oth-death").textContent = othDeath.toLocaleString();
-  document.getElementById("stat-aid-recv").textContent  = aidRecv.toLocaleString();
-  document.getElementById("stat-aid-given").textContent = aidGiven.toLocaleString();
-
-  // Render bar chart
-  renderBarChart(typeCounts, total);
-}
-
-function renderBarChart(typeCounts, grandTotal) {
-  const container = document.getElementById("chart-inner");
-  container.innerHTML = "";
-
-  const activeTypesArr = INC_TYPES.filter(t => activeTypes.has(t.code));
-
-  activeTypesArr.forEach(t => {
-    const count = typeCounts[t.code] || 0;
-    const pct   = grandTotal > 0 ? ((count / grandTotal) * 100).toFixed(1) : "0.0";
-    const barW  = parseFloat(pct);  // bar width = % of total, so max possible is 100%
-
-    const row = document.createElement("div");
-    row.className = "chart-row";
-    row.innerHTML = `
-      <div class="chart-label">
-        <span>${t.code} – ${t.label}</span>
-        <span class="chart-count">${count.toLocaleString()} <span style="color:#aaa;font-weight:400">(${pct}%)</span></span>
-      </div>
-      <div class="chart-bar-bg">
-        <div class="chart-bar-fill" style="width:${barW}%"></div>
-      </div>
-    `;
-    container.appendChild(row);
-  });
-}
-
-const DATE_FIELDS = new Set(["ALARM", "ARRIVAL", "LU_CLEAR"]);
-
-function formatUSDate(isoStr) {
-  if (isoStr == null || isoStr === "") return "";
-  const d = new Date(isoStr);
-  if (isNaN(d)) return isoStr;
-  const mo   = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const day  = String(d.getUTCDate()).padStart(2, "0");
-  const yr   = d.getUTCFullYear();
-  const hr   = d.getUTCHours();
-  const min  = String(d.getUTCMinutes()).padStart(2, "0");
-  const ampm = hr >= 12 ? "PM" : "AM";
-  const hr12 = hr % 12 || 12;
-  return `${mo}/${day}/${yr} ${hr12}:${min} ${ampm}`;
-}
-
-async function fetchDomains(layerUrl) {
-  const res  = await fetch(`${layerUrl}?f=json`);
-  const json = await res.json();
-  const domains = {};
-  (json.fields || []).forEach(field => {
-    if (field.domain?.type === "codedValue") {
-      const map = {};
-      field.domain.codedValues.forEach(cv => {
-        map[String(cv.code)] = cv.name;
-      });
-      domains[field.name] = map;
-    }
-  });
-  return domains;
-}
-
-async function exportCSV() {
-  const btn    = document.getElementById("export-btn");
-  const status = document.getElementById("export-status-bar");
-
-  const visibleLayers = activeLayers.filter(l => map.layers.includes(l));
-  if (!visibleLayers.length) { status.textContent = "No active layers to export."; return; }
-
-  const defExp = visibleLayers[0].definitionExpression;
-
-  const counts = await Promise.all(visibleLayers.map(l => l.queryFeatureCount({ where: defExp })));
-  const totalCount = counts.reduce((a, b) => a + b, 0);
-
-  if (totalCount > 100000) {
-    const ok = confirm(
-      `This export contains ${totalCount.toLocaleString()} records.\n\nLarge exports may take several minutes. Continue?`
-    );
-    if (!ok) return;
-  }
-
-  btn.disabled = true;
-  btn.textContent = "Exporting…";
-  status.textContent = "Loading field definitions…";
-
-  try {
-    const domainsByLayer = {};
-    await Promise.all(visibleLayers.map(async layer => {
-      const layerEndpoint = layer.url.endsWith("/0") ? layer.url : layer.url + "/0";
-      domainsByLayer[layer.url] = await fetchDomains(layerEndpoint);
-    }));
-
-    const allRows = [];
-    let fetched = 0;
-
-    for (const layer of visibleLayers) {
-      const layerYear = layer.title.replace("NFIRS ", "");
-      const restUrl   = layer.url + "/0/query";
-      const domains   = domainsByLayer[layer.url] || {};
-      let offset      = 0;
-      const pageSize  = 2000;
-
-      while (true) {
-        status.textContent = `Fetching ${layer.title}… (${fetched.toLocaleString()} records)`;
-
-        const params = new URLSearchParams({
-          where:             defExp,
-          outFields:         EXPORT_FIELDS.join(","),
-          returnGeometry:    false,
-          resultOffset:      offset,
-          resultRecordCount: pageSize,
-          orderByFields:     "OBJECTID ASC",
-          returnISODates:    true,
-          f:                 "json"
-        });
-
-        const response = await fetch(`${restUrl}?${params}`);
-        const json     = await response.json();
-
-        if (json.error) throw new Error(`AGO error ${json.error.code}: ${json.error.message}`);
-
-        const features = json.features || [];
-        if (!features.length) break;
-
-        features.forEach(f => {
-          const row = { YEAR: layerYear };
-          EXPORT_FIELDS.forEach(field => {
-            let val = f.attributes[field] ?? "";
-
-            if (DATE_FIELDS.has(field)) {
-              val = formatUSDate(val);
-            } else if (val !== "" && domains[field]) {
-              const label = domains[field][String(val)];
-              val = label ? `${val} - ${label}` : val;
-            }
-
-            row[field] = val;
-          });
-          allRows.push(row);
-        });
-
-        fetched += features.length;
-        offset  += pageSize;
-        if (features.length < pageSize) break;
-      }
-    }
-
-    if (!allRows.length) {
-      status.textContent = "No records found for current filters.";
-      btn.disabled = false;
-      btn.textContent = "↓ Export CSV";
-      return;
-    }
-
-    const headers  = ["YEAR", ...EXPORT_FIELDS];
-    const csvLines = [
-      headers.join(","),
-      ...allRows.map(row =>
-        headers.map(h => {
-          const val = String(row[h] ?? "");
-          return (val.includes(",") || val.includes('"')) ? `"${val.replace(/"/g, '""')}"` : val;
-        }).join(",")
-      )
-    ];
-
-    const suffix = currentSidebarFdid ? `_${currentSidebarFdid}` : "";
-    const blob   = new Blob([csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const url    = URL.createObjectURL(blob);
-    const a      = document.createElement("a");
-    a.href = url; a.download = `NFIRS_${currentStateAbbr}${suffix}_export.csv`;
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    status.textContent = `✓ Exported ${allRows.length.toLocaleString()} records.`;
-
-  } catch (err) {
-    console.error("Export error:", err);
-    status.textContent = `Export failed: ${err.message}`;
-  }
-
-  btn.disabled = false;
-  btn.textContent = "↓ Export CSV";
-}
-
-async function exportAFG() {
-  const btn    = document.getElementById("afg-btn");
-  const status = document.getElementById("export-status-bar");
-
-  if (!currentSidebarFdid) {
-    status.textContent = "AFG Report requires an FDID filter.";
-    return;
-  }
-
-  btn.disabled = true;
-  btn.textContent = "Building…";
-  status.textContent = "Querying AFG data…";
-
-  const visibleLayers = activeLayers.filter(l => map.layers.includes(l));
-  const yearsActive   = [...activeYears].sort();
-  const baseExpr      = `${FIELD_STATE} = '${currentStateAbbr}' AND ${FIELD_FDID} = '${currentSidebarFdid}'`;
-
-  const STRUCT_CODES = ["11","110","111","112","113","114","115","116","117","118","12","120","121","122","123"];
-  const VEH_CODES    = ["13","130","131","132","133","134","135","136","137","138"];
-  const VEG_CODES    = ["14","140","141","142","143"];
-
-  const structWhere  = `INC_TYPE IN (${STRUCT_CODES.map(c => `'${c}'`).join(",")})`;
-  const vehWhere     = `INC_TYPE IN (${VEH_CODES.map(c => `'${c}'`).join(",")})`;
-  const vegWhere     = `INC_TYPE IN (${VEG_CODES.map(c => `'${c}'`).join(",")})`;
-
-  const mvaWhere     = `INC_TYPE IN ('322','323','324')`;
-  const extricWhere  = `INC_TYPE = '352'`;
-  const rescueCodesArr = ["300","350","351","353","354","355","356","357","358","359",
-    "360","361","362","363","364","365","366","367","368","369",
-    "370","371","372","373","374","375","376","377","378","379","380","381"];
-  const rescueWhere  = `INC_TYPE IN (${rescueCodesArr.map(c => `'${c}'`).join(",")})`;
-  const blsWhere     = `(ACT_TAK1 = '32' OR ACT_TAK2 = '32' OR ACT_TAK3 = '32')`;
-  const alsWhere     = `(ACT_TAK1 = '33' OR ACT_TAK2 = '33' OR ACT_TAK3 = '33')`;
-  const transportWhere = `(ACT_TAK1 = '34' OR ACT_TAK2 = '34' OR ACT_TAK3 = '34')`;
-
-  try {
-    const yearData = {};
-
-    for (const year of yearsActive) {
-      const layer = activeLayers.find(l => l.title === `NFIRS ${year}`);
-      if (!layer || !map.layers.includes(layer)) { yearData[year] = null; continue; }
-      const w = baseExpr;
-      const v = r => r.features?.[0]?.attributes?.v || 0;
-
-      const [
-        othDeath, othInj, ffDeathRes, ffInjRes,
-        s100, s200, s300, s400, s500, s600, s700, s800, s900, total,
-        structFires, vehFires, vegFires, acresBurn,
-        aid1, aid2, aid3, aid4, aidFire,
-        emsMva, emsExtric, emsRescue, emsBls, emsAls, emsBlsTransport, emsAlsTransport
-      ] = await Promise.all([
-        layer.queryFeatures({ where: w, outStatistics: [{ statisticType: "sum", onStatisticField: "OTH_DEATH", outStatisticFieldName: "v" }] }),
-        layer.queryFeatures({ where: w, outStatistics: [{ statisticType: "sum", onStatisticField: "OTH_INJ",   outStatisticFieldName: "v" }] }),
-        layer.queryFeatures({ where: w, outStatistics: [{ statisticType: "sum", onStatisticField: "FF_DEATH",  outStatisticFieldName: "v" }] }),
-        layer.queryFeatures({ where: w, outStatistics: [{ statisticType: "sum", onStatisticField: "FF_INJ",    outStatisticFieldName: "v" }] }),
-        layer.queryFeatureCount({ where: `${w} AND INC_TYPE LIKE '1%'` }),
-        layer.queryFeatureCount({ where: `${w} AND INC_TYPE LIKE '2%'` }),
-        layer.queryFeatureCount({ where: `${w} AND INC_TYPE LIKE '3%'` }),
-        layer.queryFeatureCount({ where: `${w} AND INC_TYPE LIKE '4%'` }),
-        layer.queryFeatureCount({ where: `${w} AND INC_TYPE LIKE '5%'` }),
-        layer.queryFeatureCount({ where: `${w} AND INC_TYPE LIKE '6%'` }),
-        layer.queryFeatureCount({ where: `${w} AND INC_TYPE LIKE '7%'` }),
-        layer.queryFeatureCount({ where: `${w} AND INC_TYPE LIKE '8%'` }),
-        layer.queryFeatureCount({ where: `${w} AND INC_TYPE LIKE '9%'` }),
-        layer.queryFeatureCount({ where: w }),
-        layer.queryFeatureCount({ where: `${w} AND ${structWhere}` }),
-        layer.queryFeatureCount({ where: `${w} AND ${vehWhere}` }),
-        layer.queryFeatureCount({ where: `${w} AND ${vegWhere}` }),
-        layer.queryFeatures({ where: `${w} AND ${vegWhere}`, outStatistics: [{ statisticType: "sum", onStatisticField: "ACRES_BURN", outStatisticFieldName: "v" }] }),
-        layer.queryFeatureCount({ where: `${w} AND AID = '1'` }),
-        layer.queryFeatureCount({ where: `${w} AND AID = '2'` }),
-        layer.queryFeatureCount({ where: `${w} AND AID = '3'` }),
-        layer.queryFeatureCount({ where: `${w} AND AID = '4'` }),
-        layer.queryFeatureCount({ where: `${w} AND INC_TYPE LIKE '1%' AND AID <> 'N'` }),
-        layer.queryFeatureCount({ where: `${w} AND ${mvaWhere}` }),
-        layer.queryFeatureCount({ where: `${w} AND ${extricWhere}` }),
-        layer.queryFeatureCount({ where: `${w} AND ${rescueWhere}` }),
-        layer.queryFeatureCount({ where: `${w} AND ${blsWhere}` }),
-        layer.queryFeatureCount({ where: `${w} AND ${alsWhere}` }),
-        layer.queryFeatureCount({ where: `${w} AND ${blsWhere} AND ${transportWhere}` }),
-        layer.queryFeatureCount({ where: `${w} AND ${alsWhere} AND ${transportWhere}` }),
-      ]);
-
-      yearData[year] = {
-        othDeath: v(othDeath), othInj: v(othInj),
-        lodTotal: v(ffDeathRes) + v(ffInjRes),
-        s100, s200, s300, s400, s500, s600, s700, s800, s900, total,
-        structFires, vehFires, vegFires, acresBurn: v(acresBurn),
-        aid1, aid2, aid3, aid4, aidFire,
-        emsMva, emsExtric, emsRescue, emsBls, emsAls, emsBlsTransport, emsAlsTransport
-      };
-    }
-
-    const activeYearData = yearsActive.filter(y => yearData[y] !== null);
-    const sum = key => activeYearData.reduce((a, y) => a + (yearData[y]?.[key] || 0), 0);
-
-    const groups = [
-      { section: "Casualties" },
-      { label: "Fire-related civilian fatalities", key: "othDeath" },
-      { label: "Fire-related civilian injuries",   key: "othInj" },
-      { label: "LOD injuries and deaths",          key: "lodTotal" },
-      { section: "NFIRS Incidents" },
-      { label: "100 series", key: "s100" },
-      { label: "200 series", key: "s200" },
-      { label: "300 series", key: "s300" },
-      { label: "400 series", key: "s400" },
-      { label: "500 series", key: "s500" },
-      { label: "600 series", key: "s600" },
-      { label: "700 series", key: "s700" },
-      { label: "800 series", key: "s800" },
-      { label: "900 series", key: "s900" },
-      { label: "Total",      key: "total" },
-      { section: "Fire Detail" },
-      { label: "Structure fires (111-123)",  key: "structFires" },
-      { label: "Vehicle fires (130-138)",    key: "vehFires" },
-      { label: "Vegetation fires (140-143)", key: "vegFires" },
-      { label: "Acreage for veg fires",      key: "acresBurn" },
-      { section: "Aid" },
-      { label: "Receive mutual aid",            key: "aid1" },
-      { label: "Receive auto aid",              key: "aid2" },
-      { label: "Provide mutual aid",            key: "aid3" },
-      { label: "Provide auto aid",              key: "aid4" },
-      { label: "Aid incidents that were fires", key: "aidFire" },
-      { section: "EMS" },
-      { label: "Motor Vehicle Accident Calls (322-324)",   key: "emsMva" },
-      { label: "Extrication from Vehicle Calls (352)",     key: "emsExtric" },
-      { label: "Rescue Calls (300, 350-381)",              key: "emsRescue" },
-      { label: "EMS-BLS Calls",                            key: "emsBls" },
-      { label: "EMS-ALS Calls",                            key: "emsAls" },
-      { label: "EMS-BLS Transport",                        key: "emsBlsTransport" },
-      { label: "EMS-ALS Transport",                        key: "emsAlsTransport" },
-    ];
-
-    const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet("AFG Report");
-    const numCols = activeYearData.length + 2;
-
-    ws.getColumn(1).width = 38;
-    activeYearData.forEach((_, i) => { ws.getColumn(i + 2).width = 12; });
-    ws.getColumn(numCols).width = 12;
-
-    const titleRow = ws.addRow([`AFG Report — ${currentStateAbbr} · FDID ${currentSidebarFdid}`]);
-    ws.mergeCells(titleRow.number, 1, titleRow.number, numCols);
-    titleRow.height = 30;
-    titleRow.getCell(1).font      = { name: "Inter", bold: true, size: 14, color: { argb: "FFFFFFFF" } };
-    titleRow.getCell(1).fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FF58595b" } };
-    titleRow.getCell(1).alignment = { horizontal: "left", vertical: "middle", indent: 1 };
-
-    const subRow = ws.addRow([`Generated ${new Date().toLocaleDateString("en-US")}`]);
-    ws.mergeCells(subRow.number, 1, subRow.number, numCols);
-    subRow.height = 16;
-    subRow.getCell(1).font      = { name: "Inter", size: 9, color: { argb: "FF888888" } };
-    subRow.getCell(1).fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FFebebeb" } };
-    subRow.getCell(1).alignment = { horizontal: "left", vertical: "middle", indent: 1 };
-
-    ws.addRow([]);
-
-    const colHeaderRow = ws.addRow(["", ...activeYearData.map(String), "Total"]);
-    colHeaderRow.height = 20;
-    colHeaderRow.eachCell((cell, colNum) => {
-      if (colNum === 1) return;
-      cell.font      = { name: "Inter", bold: true, size: 10, color: { argb: "FFFFFFFF" } };
-      cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FF58595b" } };
-      cell.alignment = { horizontal: "center", vertical: "middle" };
-      cell.border    = { bottom: { style: "medium", color: { argb: "FF122C49" } } };
-    });
-
-    let dataRowIdx = 0;
-    groups.forEach(g => {
-      if (g.section) {
-        const sRow = ws.addRow([g.section]);
-        ws.mergeCells(sRow.number, 1, sRow.number, numCols);
-        sRow.height = 18;
-        sRow.getCell(1).font      = { name: "Inter", bold: true, size: 10, color: { argb: "FFFFFFFF" } };
-        sRow.getCell(1).fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FF122C49" } };
-        sRow.getCell(1).alignment = { horizontal: "left", vertical: "middle", indent: 1 };
-      } else {
-        const vals  = activeYearData.map(y => yearData[y]?.[g.key] || 0);
-        const dRow  = ws.addRow([g.label, ...vals, sum(g.key)]);
-        dRow.height = 15;
-
-        const isEven = dataRowIdx % 2 === 0;
-        const rowBg  = isEven ? "FFFFFFFF" : "FFF7F8F9";
-
-        dRow.getCell(1).font      = { name: "Inter", size: 10, color: { argb: "FF58595b" } };
-        dRow.getCell(1).fill      = { type: "pattern", pattern: "solid", fgColor: { argb: rowBg } };
-        dRow.getCell(1).alignment = { horizontal: "left", vertical: "middle", indent: 2 };
-        dRow.getCell(1).border    = { bottom: { style: "hair", color: { argb: "FFE0E0E0" } } };
-
-        vals.forEach((val, i) => {
-          const cell    = dRow.getCell(i + 2);
-          cell.value    = val;
-          cell.font     = { name: "Inter", size: 10, color: { argb: "FF58595b" } };
-          cell.fill     = { type: "pattern", pattern: "solid", fgColor: { argb: rowBg } };
-          cell.numFmt   = "#,##0";
-          cell.alignment = { horizontal: "center", vertical: "middle" };
-          cell.border   = { bottom: { style: "hair", color: { argb: "FFE0E0E0" } } };
-        });
-
-        const totalCell    = dRow.getCell(numCols);
-        totalCell.value    = sum(g.key);
-        totalCell.font     = { name: "Inter", bold: true, size: 10, color: { argb: "FF122C49" } };
-        totalCell.fill     = { type: "pattern", pattern: "solid", fgColor: { argb: rowBg } };
-        totalCell.numFmt   = "#,##0";
-        totalCell.alignment = { horizontal: "center", vertical: "middle" };
-        totalCell.border   = { bottom: { style: "hair", color: { argb: "FFE0E0E0" } } };
-
-        dataRowIdx++;
-      }
-    });
-
-    const buffer    = await wb.xlsx.writeBuffer();
-    const blob      = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    const url       = URL.createObjectURL(blob);
-    const a         = document.createElement("a");
-    const yearRange = activeYearData.length > 1
-      ? `${activeYearData[0]}-${activeYearData[activeYearData.length - 1]}`
-      : String(activeYearData[0]);
-    a.href     = url;
-    a.download = `AFG_Report_${currentStateAbbr}_${currentSidebarFdid}_${yearRange}.xlsx`;
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    status.textContent = `✓ AFG Report downloaded.`;
-
-  } catch (err) {
-    console.error("AFG export error:", err);
-    status.textContent = `AFG Report failed: ${err.message}`;
-  }
-
-  btn.disabled = false;
-  btn.textContent = "↓ AFG Report";
-}
-
-function clearFdid() {
-  currentSidebarFdid = "";
-  document.getElementById("topbar-fdid-input").value = "";
-  document.getElementById("fdid-clear-btn").style.display = "none";
-  document.getElementById("afg-btn").style.display = "none";
-  const badge = document.getElementById("jurisdiction-badge");
-  badge.textContent = badge.textContent.split(" · FDID")[0];
-  applyFilters();
-}
-
-function resetToGate() {
-  document.getElementById("gate").classList.remove("hidden");
-  document.getElementById("app").classList.remove("visible");
-  document.getElementById("type-dropdown").classList.remove("open");
-  document.getElementById("topbar-fdid-input").value = "";
-  document.getElementById("afg-btn").style.display = "none";
-  document.getElementById("fdid-clear-btn").style.display = "none";
-  currentSidebarFdid = "";
-  history.replaceState({}, "", window.location.pathname);
-}
-
-(function restoreFromUrl() {
-  const p = new URLSearchParams(window.location.search);
-  if (!p.get("state")) return;
-  document.getElementById("state-select").value = p.get("state");
-  updateGoBtn();
-  if (!document.getElementById("go-btn").disabled) launchApp();
-})();
-
-function loadModule(moduleName) {
-  return new Promise((resolve, reject) => require([moduleName], resolve, reject));
-}
-
+/* ---------- Boot ---------- */
+for (const k in FORMS) { const d = store(FORMS[k].key); if (d) FORMS[k].set(d); }
+renderIncident(); renderNon();
+show(location.hash === "#non" || location.hash === "#non-incident" ? "non" : "incident");
+window.addEventListener("hashchange", () => show(location.hash.startsWith("#non") ? "non" : "incident"));
 </script>
 </body>
 </html>
