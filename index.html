@@ -365,7 +365,8 @@ pre.json{margin:0;background:#0F1430;color:#E2E8F0;font:12.5px/1.55 ui-monospace
    CONFIG – edit these for your demo
    ===================================================================== */
 const CONFIG = {
-  departmentName: "Metro West FD — Wildwood, MO",
+  departmentName: "FSRI FD",
+  departmentInitials: "FSRI",            // shown in the avatar until assets/patch.png is added
   departmentNerisId: "FD24027214",        // stands in for the logged-in user's department
   logoSrc: "assets/logo.png",             // optional; text wordmark shows if missing
   patchSrc: "assets/patch.png",           // optional; initials badge shows if missing
@@ -424,7 +425,7 @@ function mountImg(slot, src, cls, fallback) {
   slot.innerHTML = fallback; img.src = src;
 }
 mountImg($("#logoSlot"), CONFIG.logoSrc, "logo", `<span class="wordmark">${esc(CONFIG.wordmark)}</span>`);
-mountImg($("#patchSlot"), CONFIG.patchSrc, "patch", `<span class="patch-fallback" aria-hidden="true">${esc(CONFIG.departmentName.split(/\s+/).filter(w => /^[A-Z]/.test(w)).slice(0, 2).map(w => w[0]).join(""))}</span>`);
+mountImg($("#patchSlot"), CONFIG.patchSrc, "patch", `<span class="patch-fallback" aria-hidden="true">${esc(CONFIG.departmentInitials)}</span>`);
 $("#deptName").textContent = CONFIG.departmentName;
 $("#deptId").textContent = CONFIG.departmentNerisId;
 $("#introIncident").innerHTML = CONFIG.introIncident;
